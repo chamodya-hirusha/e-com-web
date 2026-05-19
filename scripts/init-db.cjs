@@ -3,12 +3,22 @@ const { execSync } = require('child_process');
 require('dotenv').config();
 
 async function init() {
+  if (process.env.VERCEL || process.env.CI || process.env.NETLIFY) {
+    console.log("ℹ️ CI/CD environment detected. Running prisma generate and skipping database initialization at build time.");
+    if (!process.env.DATABASE_URL) {
+      process.env.DATABASE_URL = "mysql://localhost:3306/dummy";
+    }
+    try {
+      execSync('npx prisma generate', { stdio: 'inherit' });
+    } catch (e) {
+      console.error("Failed to run prisma generate:", e);
+      process.exit(1);
+    }
+    return;
+  }
+
   const url = process.env.DATABASE_URL;
   if (!url) {
-    if (process.env.VERCEL || process.env.CI) {
-      console.log("ℹ️ CI/CD environment detected. Skipping database initialization at build time.");
-      return;
-    }
     console.error("❌ Error: DATABASE_URL is not set in .env! Database initialization failed.");
     process.exit(1);
   }
@@ -25,12 +35,6 @@ async function init() {
   } catch (err) {
     console.error("Invalid DATABASE_URL format");
     process.exit(1);
-  }
-
-  // Skip database setup during CI/CD builds (e.g. Vercel) where localhost is unreachable
-  if (process.env.VERCEL || process.env.CI) {
-    console.log("ℹ️ CI/CD environment detected. Skipping database initialization at build time.");
-    return;
   }
 
   try {
