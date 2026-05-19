@@ -9,6 +9,7 @@
   "scripts": {
     "predev": "node ./scripts/init-db.cjs",
     "prebuild": "node ./scripts/init-db.cjs",
+    "postinstall": "prisma generate",
     "dev": "node server.js",
     "build": "next build",
     "start": "node server.js",
