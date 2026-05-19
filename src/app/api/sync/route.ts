@@ -132,6 +132,13 @@ export async function POST(req: Request) {
       });
     }
 
+    // Emit real-time socket event
+    const io = (global as any).io;
+    if (io) {
+      io.emit("sync-event", { action, entity, id, data: result });
+      console.log(`[SOCKET] Emitted sync-event: ${action} ${entity} for ID ${id}`);
+    }
+
     return NextResponse.json({ success: true, result });
   } catch (error: any) {
     console.error("[SYNC_ERROR]", error);

@@ -8,6 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, R
 import { db, uid } from "@/db/store";
 import type { Customer, Product, Warranty, WarrantyView, BackupFile, Category, Brand, Model, Supplier, Repair, Expense, Cheque, Invoice, InvoiceItem } from "@/db/types";
 import { describeWarranty } from "@/utils/warranty";
+import { io } from "socket.io-client";
 
 interface DataCtx {
   ready: boolean;
@@ -139,6 +140,154 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const id = setInterval(() => setTick((n) => n + 1), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  // Real-time synchronization via Socket.io
+  useEffect(() => {
+    if (!ready) return;
+
+    const socket = io();
+
+    socket.on("connect", () => {
+      console.log("[SOCKET] Connected to real-time sync server");
+    });
+
+    socket.on("sync-event", async (event: { action: string; entity: string; id: string; data: any }) => {
+      const { action, entity, id, data: serverData } = event;
+      console.log(`[SOCKET] Received sync-event: ${action} ${entity}`, serverData);
+
+      if (entity === "Product") {
+        if (action === "create" || action === "update") {
+          const next = { ...serverData };
+          await db.products.put(next);
+          setProducts((prev) => {
+            const idx = prev.findIndex((p) => p.id === id);
+            if (idx > -1) {
+              const updated = [...prev];
+              updated[idx] = next;
+              return updated;
+            }
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.products.remove(id);
+          setProducts((prev) => prev.filter((p) => p.id !== id));
+        }
+      } else if (entity === "Invoice") {
+        if (action === "create") {
+          const next = { ...serverData };
+          await db.invoices.put(next);
+          setInvoices((prev) => {
+            if (prev.some((i) => i.id === id)) return prev;
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.invoices.remove(id);
+          setInvoices((prev) => prev.filter((i) => i.id !== id));
+        }
+      } else if (entity === "InvoiceItem") {
+        if (action === "create") {
+          const next = { ...serverData };
+          await db.invoiceItems.put(next);
+          setInvoiceItems((prev) => {
+            if (prev.some((ii) => ii.id === id)) return prev;
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.invoiceItems.remove(id);
+          setInvoiceItems((prev) => prev.filter((ii) => ii.id !== id));
+        }
+      } else if (entity === "Customer") {
+        if (action === "create" || action === "update") {
+          const next = { ...serverData };
+          await db.customers.put(next);
+          setCustomers((prev) => {
+            const idx = prev.findIndex((c) => c.id === id);
+            if (idx > -1) {
+              const updated = [...prev];
+              updated[idx] = next;
+              return updated;
+            }
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.customers.remove(id);
+          setCustomers((prev) => prev.filter((c) => c.id !== id));
+        }
+      } else if (entity === "Cheque") {
+        if (action === "create" || action === "update") {
+          const next = { ...serverData };
+          await db.cheques.put(next);
+          setCheques((prev) => {
+            const idx = prev.findIndex((c) => c.id === id);
+            if (idx > -1) {
+              const updated = [...prev];
+              updated[idx] = next;
+              return updated;
+            }
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.cheques.remove(id);
+          setCheques((prev) => prev.filter((c) => c.id !== id));
+        }
+      } else if (entity === "Category") {
+        if (action === "create" || action === "update") {
+          const next = { ...serverData };
+          await db.categories.put(next);
+          setCategories((prev) => {
+            const idx = prev.findIndex((c) => c.id === id);
+            if (idx > -1) {
+              const updated = [...prev];
+              updated[idx] = next;
+              return updated;
+            }
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.categories.remove(id);
+          setCategories((prev) => prev.filter((c) => c.id !== id));
+        }
+      } else if (entity === "Brand") {
+        if (action === "create" || action === "update") {
+          const next = { ...serverData };
+          await db.brands.put(next);
+          setBrands((prev) => {
+            const idx = prev.findIndex((b) => b.id === id);
+            if (idx > -1) {
+              const updated = [...prev];
+              updated[idx] = next;
+              return updated;
+            }
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.brands.remove(id);
+          setBrands((prev) => prev.filter((b) => b.id !== id));
+        }
+      } else if (entity === "Model") {
+        if (action === "create" || action === "update") {
+          const next = { ...serverData };
+          await db.models.put(next);
+          setModels((prev) => {
+            const idx = prev.findIndex((m) => m.id === id);
+            if (idx > -1) {
+              const updated = [...prev];
+              updated[idx] = next;
+              return updated;
+            }
+            return [...prev, next];
+          });
+        } else if (action === "delete") {
+          await db.models.remove(id);
+          setModels((prev) => prev.filter((m) => m.id !== id));
+        }
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [ready]);
 
   // ---------- Customers ----------
   const addCustomer: DataCtx["addCustomer"] = useCallback(async (data) => {
@@ -377,6 +526,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await db.invoiceItems.put(itemWithId);
       savedItems.push(itemWithId);
       syncToCloud("create", "InvoiceItem", itemWithId.id, item);
+
+      // Decrement product quantity locally & sync to cloud
+      const prod = await db.products.get(item.productId);
+      if (prod) {
+        const nextQty = Math.max(0, prod.quantity - item.quantity);
+        const updated = { ...prod, quantity: nextQty };
+        await db.products.put(updated);
+        setProducts((prev) => prev.map((p) => p.id === item.productId ? updated : p));
+        syncToCloud("update", "Product", item.productId, { quantity: nextQty });
+      }
     }
     setInvoiceItems((prev) => [...prev, ...savedItems]);
 

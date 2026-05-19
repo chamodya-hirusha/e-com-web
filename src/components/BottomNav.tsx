@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Cpu, ShieldCheck, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Cpu, ShieldCheck, Settings, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -10,6 +10,7 @@ const items = [
   { to: "/warranties", label: "Warranties", icon: ShieldCheck },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/products", label: "Products", icon: Cpu },
+  { to: "/stock", label: "Stock", icon: Package },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -18,7 +19,7 @@ export function BottomNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom,0px)]">
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-6">
         {items.map(({ to, label, icon: Icon, end }) => {
           const isActive = end ? pathname === to : pathname.startsWith(to);
           return (
