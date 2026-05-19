@@ -29,14 +29,34 @@ const branchData = [
 ];
 
 export default async function Dashboard() {
-  const [customersCount, lowStockCount, pendingRepairs, warrantiesRaw, lowStockList, recentRepairs] = await Promise.all([
-    prisma.customer.count(),
-    prisma.product.count({ where: { quantity: { lt: 5 } } }),
-    prisma.repair.count({ where: { status: { name: "Pending" } } }),
-    prisma.warranty.findMany({ include: { product: true, customer: true } }),
-    prisma.product.findMany({ where: { quantity: { lt: 5 } }, take: 3 }),
-    prisma.repair.findMany({ orderBy: { receivedDate: "desc" }, take: 3, include: { status: true, customer: true } }),
-  ]);
+  let customersCount = 0;
+  let lowStockCount = 0;
+  let pendingRepairs = 0;
+  let warrantiesRaw: any[] = [];
+  let lowStockList: any[] = [];
+  let recentRepairs: any[] = [];
+  let isDbConnected = true;
+
+  try {
+    const [cCount, lsCount, pRepairs, wRaw, lsList, rRepairs] = await Promise.all([
+      prisma.customer.count(),
+      prisma.product.count({ where: { quantity: { lt: 5 } } }),
+      prisma.repair.count({ where: { status: { name: "Pending" } } }),
+      prisma.warranty.findMany({ include: { product: true, customer: true } }),
+      prisma.product.findMany({ where: { quantity: { lt: 5 } }, take: 3 }),
+      prisma.repair.findMany({ orderBy: { receivedDate: "desc" }, take: 3, include: { status: true, customer: true } }),
+    ]);
+
+    customersCount = cCount;
+    lowStockCount = lsCount;
+    pendingRepairs = pRepairs;
+    warrantiesRaw = wRaw;
+    lowStockList = lsList;
+    recentRepairs = rRepairs;
+  } catch (error) {
+    console.warn("⚠️ Cloud database connection failed. Operating in local-only / offline mode:", error);
+    isDbConnected = false;
+  }
 
   const warrantyViews = warrantiesRaw.map((w) => {
     const daysLeft = differenceInCalendarDays(w.expiryDate, new Date());
@@ -55,6 +75,18 @@ export default async function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {!isDbConnected && (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-xl flex items-start gap-3 backdrop-blur-md">
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="font-semibold text-sm">Operating in Local Offline Mode</h4>
+            <p className="text-xs opacity-90">
+              The cloud sync database is currently unreachable. Your data is being safely saved in your browser's local storage (IndexedDB) and will automatically sync once a database connection is established.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Sales" value="$24,500" icon={<DollarSign className="h-5 w-5" />} tone="active" />
