@@ -91,6 +91,11 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               {brandName && <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full font-semibold">{brandName}</span>}
               {modelName && <span className="bg-secondary text-secondary-foreground border border-border px-2.5 py-0.5 rounded-full font-semibold">{modelName}</span>}
               {categoryName && <span className="bg-secondary text-secondary-foreground border border-border px-2.5 py-0.5 rounded-full font-semibold">{categoryName}</span>}
+              {product.quantity === 0 ? (
+                <span className="bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900/30 px-2.5 py-0.5 rounded-full font-semibold">Out of Stock</span>
+              ) : (
+                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30 px-2.5 py-0.5 rounded-full font-semibold">In Stock</span>
+              )}
             </div>
           </div>
           <Button onClick={() => setIsEditDialogOpen(true)} size="sm" variant="outline">

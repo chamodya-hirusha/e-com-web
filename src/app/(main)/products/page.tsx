@@ -62,9 +62,21 @@ export default function ProductsPage() {
             return (
               <li key={p.id} className="card-elevated p-4 flex items-start justify-between gap-3">
                 <Link href={`/products/${p.id}`} className="min-w-0 flex-1 group">
-                  <p className="font-semibold truncate group-hover:text-primary inline-flex items-center gap-1">
-                    {p.name} <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold truncate group-hover:text-primary">
+                      {p.name}
+                    </span>
+                    {p.quantity === 0 ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900/30">
+                        Out of Stock
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30">
+                        In Stock
+                      </span>
+                    )}
+                    <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {brandName} {modelName ? `· ${modelName}` : ""}
                   </p>
@@ -74,7 +86,7 @@ export default function ProductsPage() {
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground flex gap-3">
                     <span>Stock: <span className="font-medium text-foreground">{p.quantity}</span></span>
-                    <span>Price: <span className="font-medium text-foreground">${p.sellPrice.toFixed(2)}</span></span>
+                    <span>Price: <span className="font-medium text-foreground">${parseFloat(p.sellPrice as any || "0").toFixed(2)}</span></span>
                   </div>
                   {used(p.id) && <span className="text-[11px] text-muted-foreground mt-1 inline-block">In use</span>}
                 </Link>

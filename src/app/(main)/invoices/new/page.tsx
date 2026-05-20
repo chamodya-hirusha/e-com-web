@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useData } from "@/hooks/useData";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowLeft, DollarSign, CreditCard } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, DollarSign, CreditCard, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface LineItem {
   productId: string;
   quantity: number;
   price: number;
+  customerWarranty?: number;
 }
 
 interface FormValues {
@@ -33,7 +35,7 @@ export default function NewInvoicePage() {
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       paymentMethod: "cash",
-      items: [{ productId: "", quantity: 1, price: 0 }]
+      items: [{ productId: "", quantity: 1, price: 0, customerWarranty: 0 }]
     }
   });
 
@@ -52,10 +54,20 @@ export default function NewInvoicePage() {
     return acc + (qty * prc);
   }, 0);
 
+  // Global stock validation check
+  const hasStockError = items.some((item) => {
+    if (!item.productId) return false;
+    const prod = products.find((p) => p.id === item.productId);
+    if (!prod) return false;
+    const qty = parseInt(String(item.quantity), 10) || 0;
+    return qty > prod.quantity;
+  });
+
   const handleProductSelect = (index: number, productId: string) => {
     const prod = products.find((p) => p.id === productId);
     if (prod) {
       setValue(`items.${index}.price`, parseFloat(String(prod.sellPrice)) || 0);
+      setValue(`items.${index}.customerWarranty`, prod.warrantyPeriod || 0);
     }
   };
 
@@ -70,6 +82,18 @@ export default function NewInvoicePage() {
       return;
     }
 
+    // Submit-time stock validation check
+    for (const item of data.items) {
+      const prod = products.find(p => p.id === item.productId);
+      if (prod) {
+        const qty = parseInt(String(item.quantity), 10) || 0;
+        if (qty > prod.quantity) {
+          toast.error(`Insufficient Stock! Only ${prod.quantity} units left for ${prod.name}`);
+          return;
+        }
+      }
+    }
+
     try {
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
       
@@ -77,6 +101,7 @@ export default function NewInvoicePage() {
         productId: item.productId,
         quantity: parseInt(String(item.quantity), 10) || 1,
         price: parseFloat(String(item.price)) || 0,
+        customerWarranty: item.customerWarranty !== undefined ? parseInt(String(item.customerWarranty), 10) : 0,
       }));
 
       // 1. Create Invoice
@@ -99,7 +124,15 @@ export default function NewInvoicePage() {
         toast.success("Cheque payment logged automatically");
       }
 
-      toast.success(`Invoice ${invoiceNumber} created successfully!`);
+      // Premium success toast notification with units and names
+      const itemsListText = data.items.map((item) => {
+        const prod = products.find(p => p.id === item.productId);
+        const name = prod ? prod.name : "Product";
+        const qty = parseInt(String(item.quantity), 10) || 1;
+        return `-${qty} units for ${name}`;
+      }).join(", ");
+
+      toast.success(`Invoice created successfully. Inventory updated (${itemsListText}).`);
       router.push("/invoices");
     } catch (err) {
       toast.error("Failed to save invoice");
@@ -165,63 +198,133 @@ export default function NewInvoicePage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ productId: "", quantity: 1, price: 0 })}
+              onClick={() => append({ productId: "", quantity: 1, price: 0, customerWarranty: 0 })}
             >
               <Plus className="h-4 w-4 mr-1" /> Add Item
             </Button>
           </div>
 
-          <div className="space-y-3">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex flex-col sm:flex-row items-end gap-3 border-b sm:border-0 pb-3 sm:pb-0">
-                <div className="flex-1 w-full space-y-1">
-                  <Label className="sm:hidden">Product</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:bg-zinc-950"
-                    {...register(`items.${index}.productId` as const, { required: "Product is required" })}
-                    onChange={(e) => handleProductSelect(index, e.target.value)}
-                  >
-                    <option value="" className="dark:text-black">-- Choose Product --</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id} className="dark:text-black">
-                        {p.name} (${parseFloat(String(p.sellPrice)).toFixed(2)} · Stock: {p.quantity})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          <div className="space-y-4">
+            {fields.map((field, index) => {
+              const rowItem = items[index];
+              const selectedProduct = rowItem?.productId ? products.find(p => p.id === rowItem.productId) : null;
+              const availableStock = selectedProduct ? selectedProduct.quantity : 0;
+              const isInsufficient = selectedProduct && (parseInt(String(rowItem.quantity), 10) || 0) > availableStock;
 
-                <div className="w-full sm:w-28 space-y-1">
-                  <Label className="sm:hidden">Price ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Price"
-                    {...register(`items.${index}.price` as const, { required: true, valueAsNumber: true })}
-                  />
-                </div>
+              return (
+                <div key={field.id} className="flex flex-col gap-2 border-b sm:border-0 pb-3 sm:pb-0">
+                  <div className="flex flex-col sm:flex-row items-end gap-3">
+                    <div className="flex-1 w-full space-y-1">
+                      <Label className="sm:hidden">Product</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:bg-zinc-950"
+                        {...register(`items.${index}.productId` as const, { required: "Product is required" })}
+                        onChange={(e) => handleProductSelect(index, e.target.value)}
+                      >
+                        <option value="" className="dark:text-black">-- Choose Product --</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id} className="dark:text-black">
+                            {p.name} (${parseFloat(String(p.sellPrice)).toFixed(2)} · Stock: {p.quantity})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="w-full sm:w-24 space-y-1">
-                  <Label className="sm:hidden">Qty</Label>
-                  <Input
-                    type="number"
-                    placeholder="Qty"
-                    {...register(`items.${index}.quantity` as const, { required: true, valueAsNumber: true })}
-                  />
-                </div>
+                    <div className="w-full sm:w-28 space-y-1">
+                      <Label className="sm:hidden">Price ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Price"
+                        {...register(`items.${index}.price` as const, { required: true, valueAsNumber: true })}
+                      />
+                    </div>
 
-                {fields.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(index)}
-                    className="text-destructive shrink-0"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+                    <div className="w-full sm:w-24 space-y-1">
+                      <Label className="sm:hidden">Qty</Label>
+                      <Input
+                        type="number"
+                        placeholder="Qty"
+                        {...register(`items.${index}.quantity` as const, { required: true, valueAsNumber: true })}
+                      />
+                    </div>
+
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        className="text-destructive shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* High-fidelity responsive stock badges, supplier warranty, customer warranty dropdown and warnings */}
+                  {selectedProduct && (
+                    <div className="flex flex-col gap-2.5 px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800/40 text-xs transition-all duration-300">
+                      {/* Stock & Supplier Warranty Row */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dashed border-zinc-200 dark:border-zinc-800/60 pb-2">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <span className={cn(
+                            "w-2 h-2 rounded-full",
+                            availableStock === 0 ? "bg-red-500 animate-pulse" : "bg-emerald-500"
+                          )} />
+                          <span>Available Stock: <span className="font-semibold text-foreground">{availableStock} units</span></span>
+                        </div>
+                        
+                        {isInsufficient && (
+                          <div className="text-red-500 font-bold flex items-center gap-1 animate-pulse">
+                            <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                            Insufficient Stock! Only {availableStock} units left
+                          </div>
+                        )}
+
+                        {/* Supplier Warranty Badge (Read-Only) */}
+                        <div className="flex items-center gap-1 text-muted-foreground print:hidden">
+                          <span className="px-2 py-0.5 rounded-full bg-zinc-200/60 dark:bg-zinc-800 text-[10px] font-medium text-foreground border border-zinc-300/40 dark:border-zinc-700/40">
+                            Supplier Warranty: {selectedProduct.warrantyPeriod ? `${selectedProduct.warrantyPeriod} Months` : "No Warranty"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Customer Warranty Selector Row */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-0.5">
+                        <div className="flex-1 flex items-center gap-2">
+                          <Label htmlFor={`items.${index}.customerWarranty`} className="text-[10px] font-bold text-muted-foreground shrink-0 uppercase tracking-wider">
+                            Customer Warranty:
+                          </Label>
+                          <select
+                            id={`items.${index}.customerWarranty`}
+                            className="flex h-8 w-full sm:w-48 rounded-md border border-input bg-transparent px-2.5 py-1 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:bg-zinc-950"
+                            {...register(`items.${index}.customerWarranty` as const, { valueAsNumber: true })}
+                          >
+                            <option value={0} className="dark:text-black">No Warranty</option>
+                            <option value={3} className="dark:text-black">3 Months</option>
+                            <option value={6} className="dark:text-black">6 Months</option>
+                            <option value={12} className="dark:text-black">1 Year (12 Months)</option>
+                            <option value={24} className="dark:text-black">2 Years (24 Months)</option>
+                            <option value={36} className="dark:text-black">3 Years (36 Months)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Dynamic Amber Disclaimer Alert */}
+                      {selectedProduct && (parseInt(String(rowItem?.customerWarranty), 10) || 0) !== (selectedProduct.warrantyPeriod || 0) && (
+                        <div className="mt-1 flex gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/30 text-[11px] text-amber-850 dark:text-amber-300 leading-relaxed font-medium transition-all duration-300">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold">⚠️ Disclaimer:</span> The customer warranty differs from the supplier warranty. The shop/vendor bears full financial and service liability for any claims during this extended period.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -269,7 +372,14 @@ export default function NewInvoicePage() {
             <Link href="/invoices">
               <Button type="button" variant="ghost">Cancel</Button>
             </Link>
-            <Button type="submit" size="lg">Create Invoice</Button>
+            <Button 
+              type="submit" 
+              size="lg" 
+              disabled={hasStockError}
+              className={cn(hasStockError && "opacity-50 cursor-not-allowed bg-red-600 hover:bg-red-600 dark:bg-red-950 dark:hover:bg-red-950")}
+            >
+              {hasStockError ? "Stock Insufficient" : "Confirm Sale"}
+            </Button>
           </div>
         </div>
       </form>

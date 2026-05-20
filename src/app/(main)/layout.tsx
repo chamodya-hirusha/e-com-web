@@ -15,6 +15,7 @@ const TITLES: Record<string, string> = {
   "/customers": "Customers",
   "/products": "Products",
   "/stock": "Stock Monitor",
+  "/purchases": "Purchasing History",
   "/attributes": "Attributes",
   "/settings": "Settings",
 };
@@ -48,7 +49,7 @@ export default function MainLayout({
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 pb-24 md:pb-8 max-w-6xl w-full mx-auto overflow-y-auto">
+        <main className="flex-1 px-4 sm:px-8 py-6 pb-24 md:pb-8 max-w-7xl w-full mx-auto overflow-y-auto no-scrollbar">
           {children}
         </main>
       </div>

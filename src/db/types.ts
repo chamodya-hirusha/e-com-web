@@ -81,6 +81,16 @@ export interface Supplier {
   createdAt: number;
 }
 
+export interface ProcuredPart {
+  id: string;
+  partName: string;
+  supplierName: string;
+  supplierBillId: string;
+  costPrice: number;
+  warrantyPeriod?: number; // months
+  billPhoto?: string; // base64 string
+}
+
 export interface Repair {
   id: string;
   customerId: string;
@@ -93,6 +103,7 @@ export interface Repair {
   receivedDate?: string;
   deliveryDate?: string;
   createdAt: number;
+  procuredParts?: ProcuredPart[];
 }
 
 export interface Expense {
@@ -102,6 +113,9 @@ export interface Expense {
   amount: number;
   date: string;
   createdAt: number;
+  paymentMethod?: string;
+  receiptPhoto?: string;
+  branchName?: string;
 }
 
 export interface Cheque {
@@ -120,6 +134,7 @@ export interface InvoiceItem {
   productId: string;
   quantity: number;
   price: number;
+  customerWarranty?: number;
 }
 
 export interface Invoice {

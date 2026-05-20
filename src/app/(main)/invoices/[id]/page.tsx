@@ -275,7 +275,15 @@ export default function InvoiceDetailPage({ params }: Props) {
                 <tr key={item.id}>
                   <td className="py-4">
                     <p className="font-semibold text-zinc-900 print:text-black">{item.product?.name || "Unknown Product"}</p>
-                    {item.product?.sku && <p className="text-xs text-zinc-400 font-medium">SKU: {item.product.sku}</p>}
+                    <div className="flex flex-wrap items-center gap-x-3 text-xs text-zinc-400 font-medium mt-0.5 print:text-zinc-500">
+                      {item.product?.sku && <span>SKU: {item.product.sku}</span>}
+                      <span>Warranty: {item.customerWarranty ? (
+                        item.customerWarranty === 12 ? "1 Year" :
+                        item.customerWarranty === 24 ? "2 Years" :
+                        item.customerWarranty === 36 ? "3 Years" :
+                        `${item.customerWarranty} Months`
+                      ) : "No Warranty"}</span>
+                    </div>
                   </td>
                   <td className="py-4 text-right">${parseFloat(String(item.price)).toFixed(2)}</td>
                   <td className="py-4 text-center font-medium">{item.quantity}</td>

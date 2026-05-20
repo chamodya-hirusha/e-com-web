@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Cpu, ShieldCheck, Settings, ShieldHalf, Wrench, Truck, CreditCard, BarChart3, FileText, Package } from "lucide-react";
+import { LayoutDashboard, Users, Cpu, ShieldCheck, Settings, ShieldHalf, Wrench, Truck, CreditCard, BarChart3, FileText, Package, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -12,6 +12,7 @@ const items = [
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/products", label: "Products", icon: Cpu },
   { to: "/stock", label: "Stock Monitor", icon: Package },
+  { to: "/purchases", label: "Purchasing History", icon: History },
   { to: "/repairs", label: "Repairs", icon: Wrench },
   { to: "/suppliers", label: "Suppliers", icon: Truck },
   { to: "/expenses", label: "Expenses", icon: CreditCard },

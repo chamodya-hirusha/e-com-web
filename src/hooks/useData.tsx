@@ -527,14 +527,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
       savedItems.push(itemWithId);
       syncToCloud("create", "InvoiceItem", itemWithId.id, item);
 
-      // Decrement product quantity locally & sync to cloud
-      const prod = await db.products.get(item.productId);
-      if (prod) {
+      // Decrement product quantity locally & sync to cloud using unique identifier (Brand + Model + SKU/Serial Number)
+      const selectedProd = await db.products.get(item.productId);
+      if (selectedProd) {
+        const allProds = await db.products.all();
+        const prod = allProds.find((p) =>
+          p.brandId === selectedProd.brandId &&
+          p.modelId === selectedProd.modelId &&
+          p.sku === selectedProd.sku &&
+          p.serial === selectedProd.serial
+        ) || selectedProd;
+
         const nextQty = Math.max(0, prod.quantity - item.quantity);
         const updated = { ...prod, quantity: nextQty };
         await db.products.put(updated);
-        setProducts((prev) => prev.map((p) => p.id === item.productId ? updated : p));
-        syncToCloud("update", "Product", item.productId, { quantity: nextQty });
+        setProducts((prev) => prev.map((p) => p.id === prod.id ? updated : p));
+        syncToCloud("update", "Product", prod.id, { quantity: nextQty });
       }
     }
     setInvoiceItems((prev) => [...prev, ...savedItems]);

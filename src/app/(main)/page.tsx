@@ -72,7 +72,6 @@ export default async function Dashboard() {
   const expiredCount = warrantyViews.filter((w) => w.status === "expired").length;
 
   const expiringSoon = warrantyViews.filter((w) => w.status === "soon").slice(0, 5);
-
   return (
     <div className="space-y-6">
       {!isDbConnected && (
@@ -88,14 +87,14 @@ export default async function Dashboard() {
       )}
 
       {/* Summary Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Sales" value="$24,500" icon={<DollarSign className="h-5 w-5" />} tone="active" />
         <StatCard title="Monthly Profit" value="$8,200" icon={<TrendingUp className="h-5 w-5" />} tone="active" />
         <StatCard title="Total Customers" value={customersCount} icon={<Users className="h-5 w-5" />} />
         <StatCard title="Active Warranties" value={activeCount} icon={<ShieldCheck className="h-5 w-5" />} tone="active" />
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Low Stock Items" value={lowStockCount} icon={<AlertTriangle className="h-5 w-5" />} tone="soon" />
         <StatCard title="Pending Repairs" value={pendingRepairs} icon={<Tool className="h-5 w-5" />} tone="soon" />
         <StatCard title="Expiring Soon" value={soonCount} icon={<AlertTriangle className="h-5 w-5" />} tone="soon" />
@@ -112,7 +111,7 @@ export default async function Dashboard() {
           {expiringSoon.length === 0 ? (
             <EmptyState icon={<ShieldCheck className="h-5 w-5" />} title="All clear" description="No warranties are about to expire." />
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-slate-100/60 dark:divide-slate-800/30">
               {expiringSoon.map((w) => (
                 <Row key={w.id} title={w.product?.name ?? "Unknown product"}
                      subtitle={`${w.customer?.name ?? "Unknown"} · expires ${formatDate(w.expiryDate)}`}>
@@ -125,15 +124,15 @@ export default async function Dashboard() {
 
         {/* Recent Invoices (Mockup for now until invoice seed is populated) */}
         <Panel title="Recent Invoices" linkTo="/reports">
-          <ul className="divide-y">
+          <ul className="divide-y divide-slate-100/60 dark:divide-slate-800/30">
             <Row title="INV-001" subtitle="John Doe · $150.00">
-              <span className="text-xs text-muted-foreground">Today</span>
+              <span className="text-xs font-semibold text-muted-foreground/80 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 px-2.5 py-1 rounded-md">Today</span>
             </Row>
             <Row title="INV-002" subtitle="Jane Smith · $450.00">
-              <span className="text-xs text-muted-foreground">Yesterday</span>
+              <span className="text-xs font-semibold text-muted-foreground/80 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 px-2.5 py-1 rounded-md">Yesterday</span>
             </Row>
             <Row title="INV-003" subtitle="Bob Johnson · $89.00">
-              <span className="text-xs text-muted-foreground">2 days ago</span>
+              <span className="text-xs font-semibold text-muted-foreground/80 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 px-2.5 py-1 rounded-md">2 days ago</span>
             </Row>
           </ul>
         </Panel>
@@ -145,7 +144,7 @@ export default async function Dashboard() {
           {recentRepairs.length === 0 ? (
              <EmptyState icon={<Tool className="h-5 w-5" />} title="No repairs" description="No recent repairs found." />
           ) : (
-             <ul className="divide-y">
+             <ul className="divide-y divide-slate-100/60 dark:divide-slate-800/30">
                {recentRepairs.map((r) => (
                  <Row key={r.id} title={r.deviceName} subtitle={`${r.status.name} · Tech: Sam`}>
                    <StatusBadge status={r.status.name === "Pending" ? "soon" : "active"} />
@@ -159,10 +158,10 @@ export default async function Dashboard() {
           {lowStockList.length === 0 ? (
             <EmptyState icon={<AlertTriangle className="h-5 w-5" />} title="Stock is good" description="No items are low on stock." />
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-slate-100/60 dark:divide-slate-800/30">
               {lowStockList.map((p) => (
                 <Row key={p.id} title={p.name} subtitle={`Stock: ${p.quantity}`}>
-                  <span className="text-xs text-destructive font-medium">Low Stock</span>
+                  <span className="text-xs text-rose-500 dark:text-rose-400 font-semibold bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100/30 dark:border-rose-900/20 px-2.5 py-1 rounded-full">Low Stock</span>
                 </Row>
               ))}
             </ul>
@@ -175,26 +174,28 @@ export default async function Dashboard() {
 
 function Panel({ title, linkTo, children }: { title: string; linkTo: string; children: React.ReactNode }) {
   return (
-    <div className="card-elevated">
-      <div className="flex items-center justify-between px-5 py-4 border-b">
-        <h2 className="font-semibold">{title}</h2>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={linkTo}>View all <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+    <div className="card-elevated flex flex-col justify-between border border-slate-100/80 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100/80 dark:border-slate-800/80">
+        <h2 className="text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
+        <Button variant="ghost" size="sm" className="h-8 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" asChild>
+          <Link href={linkTo}>View all <ArrowRight className="h-3 w-3 ml-1" /></Link>
         </Button>
       </div>
-      <div className="p-2 sm:p-3">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </div>
   );
 }
 
 function Row({ title, subtitle, children }: { title: string; subtitle: string; children?: React.ReactNode }) {
   return (
-    <li className="flex items-center justify-between gap-3 px-3 py-3">
-      <div className="min-w-0">
-        <p className="font-medium truncate">{title}</p>
-        <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+    <li className="flex items-center justify-between gap-4 py-3.5 px-2 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 rounded-lg transition-colors duration-200">
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-sm text-foreground truncate">{title}</p>
+        <p className="text-xs text-muted-foreground/80 mt-0.5 truncate">{subtitle}</p>
       </div>
-      {children}
+      <div className="shrink-0 flex items-center">
+        {children}
+      </div>
     </li>
   );
 }
