@@ -78,6 +78,11 @@ export interface Supplier {
   company: string;
   phone: string;
   email?: string;
+  taxId?: string;
+  paymentTerms?: string;
+  contractFile?: string;
+  businessVolume?: number | string;
+  outstanding?: number | string;
   createdAt: number;
 }
 

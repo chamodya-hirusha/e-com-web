@@ -1,0 +1,57 @@
+{
+  "id": "inventory-valuation",
+  "title": "Inventory Valuation",
+  "description": "Total monetary value of current warehouse stock.",
+  "category": "Inventory",
+  "icon": "Boxes",
+  "filters": [],
+  "columns": [
+    {
+      "id": "productName",
+      "label": "Product",
+      "type": "string"
+    },
+    {
+      "id": "quantity",
+      "label": "In Stock",
+      "type": "number"
+    },
+    {
+      "id": "costPrice",
+      "label": "Cost Price",
+      "type": "currency"
+    },
+    {
+      "id": "totalValue",
+      "label": "Total Value",
+      "type": "currency"
+    }
+  ],
+  "chart": null,
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=inventory-valuation",
+  "permissions": [
+    "admin",
+    "manager"
+  ],
+  "defaultSort": {
+    "column": "totalValue",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalStockValue",
+      "label": "Total Stock Value (Cost)",
+      "type": "currency"
+    },
+    {
+      "id": "totalItems",
+      "label": "Total Items In Stock",
+      "type": "number"
+    }
+  ]
+}

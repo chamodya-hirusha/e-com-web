@@ -1,0 +1,65 @@
+{
+  "id": "repair-income",
+  "title": "Repair Income",
+  "description": "Income generated from repairs.",
+  "category": "Services",
+  "icon": "Wrench",
+  "filters": [
+    {
+      "id": "dateRange",
+      "type": "date-range",
+      "label": "Date Range"
+    }
+  ],
+  "columns": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date"
+    },
+    {
+      "id": "repairCount",
+      "label": "Repairs Completed",
+      "type": "number"
+    },
+    {
+      "id": "income",
+      "label": "Income",
+      "type": "currency"
+    }
+  ],
+  "chart": {
+    "type": "bar",
+    "xAxis": "date",
+    "yAxis": [
+      "income"
+    ]
+  },
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=repair-income",
+  "permissions": [
+    "admin",
+    "manager",
+    "tech"
+  ],
+  "defaultSort": {
+    "column": "date",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalIncome",
+      "label": "Total Repair Income",
+      "type": "currency"
+    },
+    {
+      "id": "totalRepairs",
+      "label": "Total Repairs",
+      "type": "number"
+    }
+  ]
+}

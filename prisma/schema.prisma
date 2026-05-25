@@ -25,6 +25,8 @@ model Tenant {
   settings    Setting[]
   auditLogs   AuditLog[]
   cheques     Cheque[]
+  stockIntakes StockIntake[]
+  supplierBills SupplierBill[]
 }
 
 model User {
@@ -87,17 +89,40 @@ model Customer {
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
-  name      String
-  company   String
-  phone     String
-  email     String?
-  tenantId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  company         String
+  phone           String
+  email           String?
+  taxId           String?
+  paymentTerms    String?
+  contractFile    String?  @db.LongText
+  businessVolume  Decimal  @default(0)
+  outstanding     Decimal  @default(0)
+  tenantId        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id])
-  products  Product[]
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  products        Product[]
+  bills           SupplierBill[]
+}
+
+model SupplierBill {
+  id           String   @id @default(cuid())
+  supplierId   String
+  month        String
+  amount       Decimal
+  date         DateTime @default(now())
+  invoiceFile  String?  @db.LongText
+  receiptFile  String?  @db.LongText
+  noteFile     String?  @db.LongText
+  tenantId     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 model Category {
@@ -306,4 +331,61 @@ model Cheque {
   updatedAt    DateTime @updatedAt
 
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model StockIntake {
+  id                  String   @id @default(cuid())
+  date                String
+  timestamp           BigInt
+  supplierId          String?
+  supplierName        String?
+  billPhoto           String?  @db.LongText
+  brandName           String?
+  modelName           String?
+  categoryName        String?
+  serial              String?
+  warrantyPeriod      String?
+  costPrice           Decimal?
+  sellPrice           Decimal?
+  quantity            Int?
+  procurementDateTime String?
+  invoiceId           String?
+  branchName          String?
+  warehouseLocation   String?
+  totalBillAmount     Decimal?
+  advancePayment      Decimal?
+  remainingBalance    Decimal?
+  paymentMethod       String?
+  cardType            String?
+  cardTxRef           String?
+  chequeNumber        String?
+  chequeDate          String?
+  bankTxRef           String?
+  bankAccount         String?
+  paymentStatus       String?
+  discrepancyNotes    String?  @db.Text
+  
+  tenantId            String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id])
+  items               StockIntakeItem[]
+}
+
+model StockIntakeItem {
+  id             String   @id @default(cuid())
+  stockIntakeId  String
+  brandName      String?
+  modelName      String?
+  categoryId     String?
+  categoryName   String?
+  serial         String?
+  warrantyPeriod String?
+  customWarranty String?
+  costPrice      Decimal?
+  sellPrice      Decimal?
+  quantity       Int
+
+  stockIntake    StockIntake @relation(fields: [stockIntakeId], references: [id], onDelete: Cascade)
 }

@@ -12,19 +12,6 @@ import {
   Building2, Tag, FileText, Calendar, Filter, ChevronDown, Check, ArrowUpDown
 } from "lucide-react";
 import { toast } from "sonner";
-import localforage from "localforage";
-
-// High-fidelity luxury SVG invoice templates encoded as dynamic strings
-const MOCK_BILL_SVG_BOSE = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="100%"><rect width="800" height="1000" fill="%23ffffff"/><rect width="800" height="180" fill="%230f172a"/><text x="50" y="80" fill="%23f8fafc" font-family="system-ui,sans-serif" font-size="28" font-weight="800" letter-spacing="1">ERP INVENTORY SYSTEM</text><text x="50" y="115" fill="%2394a3b8" font-family="system-ui,sans-serif" font-size="14" font-weight="500">SUPPLIER STOCK INTAKE LEDGER</text><text x="750" y="80" fill="%23f8fafc" font-family="system-ui,sans-serif" font-size="32" font-weight="300" text-anchor="end">INVOICE</text><text x="750" y="115" fill="%23f59e0b" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">%23INV-2026-0089</text><text x="50" y="240" fill="%2364748b" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1">SUPPLIER</text><text x="50" y="265" fill="%230f172a" font-family="system-ui,sans-serif" font-size="16" font-weight="800">Acoustic Labs Inc.</text><text x="50" y="285" fill="%23475569" font-family="system-ui,sans-serif" font-size="13">Colombo, Sri Lanka</text><text x="450" y="240" fill="%2364748b" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1">DATE &amp; DETAILS</text><text x="450" y="265" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Date: May 18, 2026</text><text x="450" y="285" fill="%23475569" font-family="system-ui,sans-serif" font-size="13">Status: PAID / RECEIVED</text><line x1="50" y1="330" x2="750" y2="330" stroke="%23e2e8f0" stroke-width="1.5"/><text x="50" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700">DESCRIPTION</text><text x="450" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">QTY</text><text x="600" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">UNIT COST (LKR)</text><text x="750" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">TOTAL (LKR)</text><line x1="50" y1="390" x2="750" y2="390" stroke="%230f172a" stroke-width="2"/><text x="50" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Bose QuietComfort Ultra Headphones</text><text x="50" y="450" fill="%2364748b" font-family="system-ui,sans-serif" font-size="11">S/N: QC-9082-A · Cat: Audio · Warranty: 1 Year</text><text x="450" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">15</text><text x="600" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">Rs. 98,500.00</text><text x="750" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="800" text-anchor="end">Rs. 1,477,500.00</text><line x1="50" y1="480" x2="750" y2="480" stroke="%23f1f5f9" stroke-width="1"/><text x="50" y="520" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Sony WH-1000XM5 ANC Headphones</text><text x="50" y="540" fill="%2364748b" font-family="system-ui,sans-serif" font-size="11">S/N: SN-XM5-882 · Cat: Audio · Warranty: 2 Years</text><text x="450" y="520" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">20</text><text x="600" y="520" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">Rs. 85,000.00</text><text x="750" y="520" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="800" text-anchor="end">Rs. 1,700,000.00</text><line x1="400" y1="560" x2="750" y2="560" stroke="%230f172a" stroke-width="1.5"/><text x="600" y="600" fill="%2364748b" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Subtotal:</text><text x="750" y="600" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Rs. 3,177,500.00</text><text x="600" y="635" fill="%2364748b" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">VAT (18%):</text><text x="750" y="635" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Rs. 571,950.00</text><line x1="400" y1="665" x2="750" y2="665" stroke="%230f172a" stroke-width="2"/><text x="600" y="705" fill="%230f172a" font-family="system-ui,sans-serif" font-size="18" font-weight="800" text-anchor="end">TOTAL DUE:</text><text x="750" y="705" fill="%23f59e0b" font-family="system-ui,sans-serif" font-size="22" font-weight="900" text-anchor="end">Rs. 3,749,450.00</text><rect x="50" y="800" width="700" height="60" rx="8" fill="%23f8fafc" stroke="%23e2e8f0" stroke-width="1"/><text x="400" y="835" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="500" text-anchor="middle">Thank you for your business. For compliance queries, reach support@acousticlabs.com</text></svg>`;
-
-const MOCK_BILL_SVG_SONY = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="100%"><rect width="800" height="1000" fill="%23ffffff"/><rect width="800" height="180" fill="%231e3a8a"/><text x="50" y="80" fill="%23f8fafc" font-family="system-ui,sans-serif" font-size="28" font-weight="800" letter-spacing="1">NEXUS ELECTRONICS ERP</text><text x="50" y="115" fill="%2393c5fd" font-family="system-ui,sans-serif" font-size="14" font-weight="500">SUPPLIER SUPPLY &amp; INTAKE SUMMARY</text><text x="750" y="80" fill="%23f8fafc" font-family="system-ui,sans-serif" font-size="32" font-weight="300" text-anchor="end">BILL INTAKE</text><text x="750" y="115" fill="%2310b981" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">%23NXS-2026-9042</text><text x="50" y="240" fill="%2364748b" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1">SUPPLIER</text><text x="50" y="265" fill="%230f172a" font-family="system-ui,sans-serif" font-size="16" font-weight="800">Nexus Electronics</text><text x="50" y="285" fill="%23475569" font-family="system-ui,sans-serif" font-size="13">Colombo 03, Sri Lanka</text><text x="450" y="240" fill="%2364748b" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1">DATE &amp; COMPLIANCE</text><text x="450" y="265" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Date: May 12, 2026</text><text x="450" y="285" fill="%23475569" font-family="system-ui,sans-serif" font-size="13">Status: DISPATCHED / PAID</text><line x1="50" y1="330" x2="750" y2="330" stroke="%23e2e8f0" stroke-width="1.5"/><text x="50" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700">DESCRIPTION</text><text x="450" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">QTY</text><text x="600" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">UNIT COST (LKR)</text><text x="750" y="370" fill="%2364748b" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">TOTAL (LKR)</text><line x1="50" y1="390" x2="750" y2="390" stroke="%231e3a8a" stroke-width="2"/><text x="50" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Sony WH-1000XM5 ANC Headphones</text><text x="50" y="450" fill="%2364748b" font-family="system-ui,sans-serif" font-size="11">S/N: SN-XM5-882 · Cat: Audio · Warranty: 2 Years</text><text x="450" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">20</text><text x="600" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">Rs. 85,000.00</text><text x="750" y="430" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="800" text-anchor="end">Rs. 1,700,000.00</text><line x1="400" y1="480" x2="750" y2="480" stroke="%231e3a8a" stroke-width="1.5"/><text x="600" y="520" fill="%2364748b" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Subtotal:</text><text x="750" y="520" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Rs. 1,700,000.00</text><text x="600" y="555" fill="%2364748b" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">VAT (18%):</text><text x="750" y="555" fill="%230f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Rs. 306,000.00</text><line x1="400" y1="585" x2="750" y2="585" stroke="%231e3a8a" stroke-width="2"/><text x="600" y="625" fill="%230f172a" font-family="system-ui,sans-serif" font-size="18" font-weight="800" text-anchor="end">TOTAL DUE:</text><text x="750" y="625" fill="%2310b981" font-family="system-ui,sans-serif" font-size="22" font-weight="900" text-anchor="end">Rs. 2,006,000.00</text><rect x="50" y="720" width="700" height="60" rx="8" fill="%23f0fdf4" stroke="%23bbf7d0" stroke-width="1"/><text x="400" y="755" fill="%23166534" font-family="system-ui,sans-serif" font-size="12" font-weight="500" text-anchor="middle">Compliance document stored in secure cloud nodes. Verified by Nexus Legal.</text></svg>`;
-
-const MOCK_BILL_SVG_APPLE = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="100%"><rect width="800" height="1000" fill="%23ffffff"/><rect width="800" height="180" fill="%2309090b"/><text x="50" y="80" fill="%23f4f4f5" font-family="system-ui,sans-serif" font-size="28" font-weight="800" letter-spacing="1">APEX LOGISTICS &amp; GOODS</text><text x="50" y="115" fill="%23a1a1aa" font-family="system-ui,sans-serif" font-size="14" font-weight="500">ELECTRONIC SUPPLY DISPATCH</text><text x="750" y="80" fill="%23f4f4f5" font-family="system-ui,sans-serif" font-size="32" font-weight="300" text-anchor="end">LEDGER INTAKE</text><text x="750" y="115" fill="%23e4e4e7" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">%23APX-2026-3392</text><text x="50" y="240" fill="%2371717a" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1">SUPPLIER</text><text x="50" y="265" fill="%2309090b" font-family="system-ui,sans-serif" font-size="16" font-weight="800">Apex Logistics</text><text x="50" y="285" fill="%2327272a" font-family="system-ui,sans-serif" font-size="13">Kandy, Sri Lanka</text><text x="450" y="240" fill="%2371717a" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1">DATE &amp; SHIPMENT</text><text x="450" y="265" fill="%2309090b" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Date: May 05, 2026</text><text x="450" y="285" fill="%2327272a" font-family="system-ui,sans-serif" font-size="13">Status: COMPLETED / IN STOCK</text><line x1="50" y1="330" x2="750" y2="330" stroke="%23e4e4e7" stroke-width="1.5"/><text x="50" y="370" fill="%2371717a" font-family="system-ui,sans-serif" font-size="12" font-weight="700">DESCRIPTION</text><text x="450" y="370" fill="%2371717a" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">QTY</text><text x="600" y="370" fill="%2371717a" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">UNIT COST (LKR)</text><text x="750" y="370" fill="%2371717a" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="end">TOTAL (LKR)</text><line x1="50" y1="390" x2="750" y2="390" stroke="%2309090b" stroke-width="2"/><text x="50" y="430" fill="%2309090b" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Apple iPad Air M2 (11-inch)</text><text x="50" y="450" fill="%2371717a" font-family="system-ui,sans-serif" font-size="11">S/N: APL-M2-771 · Cat: Tablets · Warranty: 1 Year</text><text x="450" y="430" fill="%2309090b" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">8</text><text x="600" y="430" fill="%2309090b" font-family="system-ui,sans-serif" font-size="14" font-weight="600" text-anchor="end">Rs. 185,000.00</text><text x="750" y="430" fill="%2309090b" font-family="system-ui,sans-serif" font-size="14" font-weight="800" text-anchor="end">Rs. 1,480,000.00</text><line x1="400" y1="480" x2="750" y2="480" stroke="%2309090b" stroke-width="1.5"/><text x="600" y="520" fill="%2371717a" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Subtotal:</text><text x="750" y="520" fill="%2309090b" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Rs. 1,480,000.00</text><text x="600" y="555" fill="%2371717a" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">VAT (18%):</text><text x="750" y="555" fill="%2309090b" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="end">Rs. 266,400.00</text><line x1="400" y1="585" x2="750" y2="585" stroke="%2309090b" stroke-width="2"/><text x="600" y="625" fill="%2309090b" font-family="system-ui,sans-serif" font-size="18" font-weight="800" text-anchor="end">TOTAL DUE:</text><text x="750" y="625" fill="%2309090b" font-family="system-ui,sans-serif" font-size="22" font-weight="900" text-anchor="end">Rs. 1,746,400.00</text><rect x="50" y="720" width="700" height="60" rx="8" fill="%23fafafa" stroke="%23e4e4e7" stroke-width="1"/><text x="400" y="755" fill="%2327272a" font-family="system-ui,sans-serif" font-size="12" font-weight="500" text-anchor="middle">Official dispatch verified by Apple Sri Lanka Distribution Hub.</text></svg>`;
-
-const stockIntakesStore = localforage.createInstance({
-  name: "warranty-manager",
-  storeName: "stock_intakes"
-});
 
 interface IntakeItem {
   id: string;
@@ -90,15 +77,18 @@ function sanitizeIntakeLog(log: any): StockIntake {
     serial: log.serial || "N/A",
     warrantyPeriod: log.warrantyPeriod || "1 Year",
     customWarranty: "",
-    costPrice: log.costPrice || 0,
-    sellPrice: log.sellPrice || 0,
-    quantity: log.quantity || 1
+    costPrice: log.costPrice ? Number(log.costPrice) : 0,
+    sellPrice: log.sellPrice ? Number(log.sellPrice) : 0,
+    quantity: log.quantity ? Number(log.quantity) : 1
   };
   return {
     ...log,
+    costPrice: log.costPrice ? Number(log.costPrice) : 0,
+    sellPrice: log.sellPrice ? Number(log.sellPrice) : 0,
+    quantity: log.quantity ? Number(log.quantity) : 1,
+    totalBillAmount: log.totalBillAmount !== undefined && log.totalBillAmount !== null ? Number(log.totalBillAmount) : (Number(log.costPrice || 0) * Number(log.quantity || 1)),
+    remainingBalance: log.remainingBalance !== undefined && log.remainingBalance !== null ? Number(log.remainingBalance) : Math.max(0, (Number(log.costPrice || 0) * Number(log.quantity || 1)) - Number(log.advancePayment || 0)),
     items: [legacyItem],
-    totalBillAmount: log.totalBillAmount !== undefined ? log.totalBillAmount : (Number(log.costPrice || 0) * Number(log.quantity || 1)),
-    remainingBalance: log.remainingBalance !== undefined ? log.remainingBalance : Math.max(0, (Number(log.costPrice || 0) * Number(log.quantity || 1)) - Number(log.advancePayment || 0))
   };
 }
 
@@ -120,165 +110,15 @@ export default function PurchasingHistoryPage() {
   const [activeLightboxBill, setActiveLightboxBill] = useState<StockIntake | null>(null);
   const [lightboxScale, setLightboxScale] = useState(1);
 
-  // Load and seed database if completely empty to keep visuals striking
+  // Fetch real data from the database
   const loadIntakes = async () => {
     try {
       setLoading(true);
-      const dbItems: StockIntake[] = [];
-      await stockIntakesStore.iterate<StockIntake, void>((value) => {
-        dbItems.push(sanitizeIntakeLog(value));
-      });
-
-      if (dbItems.length === 0) {
-        const defaultMockIntakes: StockIntake[] = [
-          {
-            id: "intake-1",
-            timestamp: Date.now() - 3600000 * 2,
-            date: new Date(Date.now() - 3600000 * 2).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' }),
-            supplierId: "mock-sup-1",
-            supplierName: "Acoustic Labs Inc.",
-            brandName: "Bose",
-            modelName: "QuietComfort Ultra",
-            categoryName: "Audio",
-            serial: "QC-9082-A",
-            warrantyPeriod: "1 Year",
-            costPrice: 98500,
-            sellPrice: 145000,
-            quantity: 15,
-            billPhoto: MOCK_BILL_SVG_BOSE,
-            invoiceId: "INV-2026-0089",
-            branchName: "Main Head Office",
-            warehouseLocation: "Main Headquarters (HQ)",
-            totalBillAmount: 3177500,
-            advancePayment: 3177500,
-            remainingBalance: 0,
-            paymentMethod: "Bank Transfer",
-            bankTxRef: "TXN-88902-LANKA",
-            bankAccount: "0010-8809-1229",
-            paymentStatus: "Fully Paid",
-            procurementDateTime: new Date(Date.now() - 3600000 * 2).toISOString().slice(0, 16),
-            discrepancyNotes: "Procurement cleared and registered into main audio hubs.",
-            items: [
-              {
-                id: "item-1a",
-                brandName: "Bose",
-                modelName: "QuietComfort Ultra",
-                categoryId: "audio-cat-1",
-                categoryName: "Audio",
-                serial: "QC-9082-A",
-                warrantyPeriod: "1 Year",
-                customWarranty: "",
-                costPrice: 98500,
-                sellPrice: 145000,
-                quantity: 15
-              },
-              {
-                id: "item-1b",
-                brandName: "Sony",
-                modelName: "WH-1000XM5",
-                categoryId: "audio-cat-1",
-                categoryName: "Audio",
-                serial: "SN-XM5-882",
-                warrantyPeriod: "2 Years",
-                customWarranty: "",
-                costPrice: 85000,
-                sellPrice: 115000,
-                quantity: 20
-              }
-            ]
-          },
-          {
-            id: "intake-2",
-            timestamp: Date.now() - 86400000 * 3,
-            date: new Date(Date.now() - 86400000 * 3).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' }),
-            supplierId: "mock-sup-2",
-            supplierName: "Nexus Electronics",
-            brandName: "Sony",
-            modelName: "WH-1000XM5",
-            categoryName: "Audio",
-            serial: "SN-XM5-882",
-            warrantyPeriod: "2 Years",
-            costPrice: 85000,
-            sellPrice: 115000,
-            quantity: 20,
-            billPhoto: MOCK_BILL_SVG_SONY,
-            invoiceId: "INV-2026-0105",
-            branchName: "Colombo Branch",
-            warehouseLocation: "Colombo Central Warehouse",
-            totalBillAmount: 1700000,
-            advancePayment: 500000,
-            remainingBalance: 1200000,
-            paymentMethod: "Cheque",
-            chequeNumber: "CHQ-99020",
-            chequeDate: new Date(Date.now() - 86400000 * 1).toISOString().slice(0, 10),
-            paymentStatus: "Partially Paid",
-            procurementDateTime: new Date(Date.now() - 86400000 * 3).toISOString().slice(0, 16),
-            discrepancyNotes: "Minor box damage on 2 units, accepted discount.",
-            items: [
-              {
-                id: "item-2a",
-                brandName: "Sony",
-                modelName: "WH-1000XM5",
-                categoryId: "audio-cat-1",
-                categoryName: "Audio",
-                serial: "SN-XM5-882",
-                warrantyPeriod: "2 Years",
-                customWarranty: "",
-                costPrice: 85000,
-                sellPrice: 115000,
-                quantity: 20
-              }
-            ]
-          },
-          {
-            id: "intake-3",
-            timestamp: Date.now() - 86400000 * 8,
-            date: new Date(Date.now() - 86400000 * 8).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' }),
-            supplierId: "mock-sup-3",
-            supplierName: "Apex Logistics",
-            brandName: "Apple",
-            modelName: "iPad Air M2",
-            categoryName: "Tablets",
-            serial: "APL-M2-771",
-            warrantyPeriod: "1 Year",
-            costPrice: 185000,
-            sellPrice: 245000,
-            quantity: 8,
-            billPhoto: MOCK_BILL_SVG_APPLE,
-            invoiceId: "INV-2026-0210",
-            branchName: "Kandy Branch",
-            warehouseLocation: "Kandy Distribution Center",
-            totalBillAmount: 1480000,
-            advancePayment: 0,
-            remainingBalance: 1480000,
-            paymentMethod: "Cash",
-            paymentStatus: "Credit / Pending",
-            procurementDateTime: new Date(Date.now() - 86400000 * 8).toISOString().slice(0, 16),
-            discrepancyNotes: "Batch inspection completed. 0 defects reported.",
-            items: [
-              {
-                id: "item-3a",
-                brandName: "Apple",
-                modelName: "iPad Air M2",
-                categoryId: "tablets-cat-1",
-                categoryName: "Tablets",
-                serial: "APL-M2-771",
-                warrantyPeriod: "1 Year",
-                customWarranty: "",
-                costPrice: 185000,
-                sellPrice: 245000,
-                quantity: 8
-              }
-            ]
-          }
-        ];
-
-        for (const defaultMock of defaultMockIntakes) {
-          await stockIntakesStore.setItem(defaultMock.id, defaultMock);
-        }
-        dbItems.push(...defaultMockIntakes);
-      }
-
+      const res = await fetch('/api/stock-intakes', { headers: { 'x-tenant-id': 'cmpc620w20007ezgn2axsmt9p' } });
+      if (!res.ok) throw new Error("Failed to fetch intakes");
+      const data = await res.json();
+      
+      const dbItems: StockIntake[] = data.map((item: any) => sanitizeIntakeLog(item));
       dbItems.sort((a, b) => b.timestamp - a.timestamp);
       setIntakesHistory(dbItems);
     } catch (e) {

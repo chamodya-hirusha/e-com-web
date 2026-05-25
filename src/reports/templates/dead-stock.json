@@ -1,0 +1,73 @@
+{
+  "id": "dead-stock",
+  "title": "Dead Stock & Slow-Moving Items",
+  "description": "Identify products with low or zero sales activity.",
+  "category": "Inventory",
+  "icon": "TrendingDown",
+  "filters": [
+    {
+      "id": "monthsInactive",
+      "type": "select",
+      "label": "Months Inactive",
+      "options": [
+        {
+          "label": "3 Months",
+          "value": "3"
+        },
+        {
+          "label": "6 Months",
+          "value": "6"
+        }
+      ]
+    }
+  ],
+  "columns": [
+    {
+      "id": "productName",
+      "label": "Product",
+      "type": "string"
+    },
+    {
+      "id": "stockQuantity",
+      "label": "In Stock",
+      "type": "number"
+    },
+    {
+      "id": "lastSoldDate",
+      "label": "Last Sold Date",
+      "type": "date"
+    },
+    {
+      "id": "tiedCapital",
+      "label": "Tied Capital",
+      "type": "currency"
+    }
+  ],
+  "chart": null,
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=dead-stock",
+  "permissions": [
+    "admin",
+    "manager"
+  ],
+  "defaultSort": {
+    "column": "tiedCapital",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalDeadStockValue",
+      "label": "Capital Tied in Dead Stock",
+      "type": "currency"
+    },
+    {
+      "id": "deadStockItems",
+      "label": "Dead Stock Items",
+      "type": "number"
+    }
+  ]
+}

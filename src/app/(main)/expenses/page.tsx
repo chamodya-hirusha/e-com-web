@@ -13,15 +13,8 @@ import {
   Check, ArrowUpDown, Wallet, Receipt, ChevronRight, Upload, Info
 } from "lucide-react";
 import { toast } from "sonner";
-import localforage from "localforage";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { Expense, Invoice, Repair } from "@/db/types";
-
-// Connect to the IndexedDB localforage instance for stock intakes
-const stockIntakesStore = localforage.createInstance({
-  name: "warranty-manager",
-  storeName: "stock_intakes"
-});
 
 interface IntakeItem {
   id: string;
@@ -127,40 +120,42 @@ export default function ExpensesPage() {
   const [expenseBranch, setExpenseBranch] = useState("Main Head Office");
   const [expenseReceipt, setExpenseReceipt] = useState<string>("");
 
-  // Read Stock Intakes on Mount/Update
   const loadStockIntakes = async () => {
     try {
       setLoadingIntakes(true);
-      const dbItems: StockIntake[] = [];
-      await stockIntakesStore.iterate<StockIntake, void>((value) => {
-        // Sanitize legacy entries
-        const items = value.items || [
+      const res = await fetch('/api/stock-intakes', { headers: { 'x-tenant-id': 'cmpc620w20007ezgn2axsmt9p' } });
+      if (!res.ok) throw new Error("Failed to fetch intakes");
+      const data = await res.json();
+      
+      const dbItems: StockIntake[] = data.map((item: any) => {
+        const items = item.items || [
           {
-            id: `item-legacy-${value.id}`,
-            brandName: value.brandName || "Unknown",
-            modelName: value.modelName || "Item",
+            id: `item-legacy-${item.id}`,
+            brandName: item.brandName || "Unknown",
+            modelName: item.modelName || "Item",
             categoryId: "",
-            categoryName: value.categoryName || "Uncategorized",
-            serial: value.serial || "N/A",
-            warrantyPeriod: value.warrantyPeriod || "1 Year",
+            categoryName: item.categoryName || "Uncategorized",
+            serial: item.serial || "N/A",
+            warrantyPeriod: item.warrantyPeriod || "1 Year",
             customWarranty: "",
-            costPrice: value.costPrice || 0,
-            sellPrice: value.sellPrice || 0,
-            quantity: value.quantity || 1
+            costPrice: item.costPrice || 0,
+            sellPrice: item.sellPrice || 0,
+            quantity: item.quantity || 1
           }
         ];
-        const totalBillAmount = value.totalBillAmount !== undefined ? value.totalBillAmount : (Number(value.costPrice || 0) * Number(value.quantity || 1));
-        dbItems.push({
-          ...value,
+        const totalBillAmount = item.totalBillAmount !== undefined && item.totalBillAmount !== null ? Number(item.totalBillAmount) : (Number(item.costPrice || 0) * Number(item.quantity || 1));
+        return {
+          ...item,
           items,
-          totalBillAmount
-        });
+          totalBillAmount,
+          timestamp: item.timestamp || new Date(item.createdAt).getTime()
+        };
       });
-      // Sort newest first
+      
       dbItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       setIntakes(dbItems);
     } catch (err) {
-      console.error("Failed to read stock intakes history", err);
+      console.error("Failed to fetch stock intakes history", err);
     } finally {
       setLoadingIntakes(false);
     }

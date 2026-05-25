@@ -1,0 +1,54 @@
+{
+  "id": "expense-summary",
+  "title": "Expense Summary",
+  "description": "Breakdown of expenses by category.",
+  "category": "Finance",
+  "icon": "FileText",
+  "filters": [
+    {
+      "id": "dateRange",
+      "type": "date-range",
+      "label": "Date Range"
+    }
+  ],
+  "columns": [
+    {
+      "id": "category",
+      "label": "Category",
+      "type": "string"
+    },
+    {
+      "id": "amount",
+      "label": "Amount",
+      "type": "currency"
+    }
+  ],
+  "chart": {
+    "type": "pie",
+    "xAxis": "category",
+    "yAxis": [
+      "amount"
+    ]
+  },
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=expense-summary",
+  "permissions": [
+    "admin",
+    "manager"
+  ],
+  "defaultSort": {
+    "column": "amount",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalExpenses",
+      "label": "Total Expenses",
+      "type": "currency"
+    }
+  ]
+}

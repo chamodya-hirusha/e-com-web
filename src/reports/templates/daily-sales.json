@@ -1,0 +1,64 @@
+{
+  "id": "daily-sales",
+  "title": "Daily Sales Report",
+  "description": "Summary of sales for a specific date range.",
+  "category": "Sales",
+  "icon": "BarChart3",
+  "filters": [
+    {
+      "id": "dateRange",
+      "type": "date-range",
+      "label": "Date Range"
+    }
+  ],
+  "columns": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date"
+    },
+    {
+      "id": "invoiceCount",
+      "label": "Invoices",
+      "type": "number"
+    },
+    {
+      "id": "totalSales",
+      "label": "Total Sales",
+      "type": "currency"
+    }
+  ],
+  "chart": {
+    "type": "bar",
+    "xAxis": "date",
+    "yAxis": [
+      "totalSales"
+    ]
+  },
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=daily-sales",
+  "permissions": [
+    "admin",
+    "manager"
+  ],
+  "defaultSort": {
+    "column": "date",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalRevenue",
+      "label": "Total Revenue",
+      "type": "currency"
+    },
+    {
+      "id": "totalInvoices",
+      "label": "Total Invoices",
+      "type": "number"
+    }
+  ]
+}

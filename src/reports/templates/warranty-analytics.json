@@ -1,0 +1,75 @@
+{
+  "id": "warranty-analytics",
+  "title": "Warranty Liability Analytics",
+  "description": "Track shop-guaranteed warranties versus claims.",
+  "category": "Analytics",
+  "icon": "ShieldCheck",
+  "filters": [
+    {
+      "id": "status",
+      "type": "select",
+      "label": "Status",
+      "options": [
+        {
+          "label": "Active",
+          "value": "active"
+        },
+        {
+          "label": "Expired",
+          "value": "expired"
+        }
+      ]
+    }
+  ],
+  "columns": [
+    {
+      "id": "productName",
+      "label": "Product",
+      "type": "string"
+    },
+    {
+      "id": "activeWarranties",
+      "label": "Active Warranties",
+      "type": "number"
+    },
+    {
+      "id": "claimsMade",
+      "label": "Claims Made",
+      "type": "number"
+    }
+  ],
+  "chart": {
+    "type": "bar",
+    "xAxis": "productName",
+    "yAxis": [
+      "activeWarranties",
+      "claimsMade"
+    ]
+  },
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=warranty-analytics",
+  "permissions": [
+    "admin",
+    "manager"
+  ],
+  "defaultSort": {
+    "column": "activeWarranties",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalActiveWarranties",
+      "label": "Total Active Warranties",
+      "type": "number"
+    },
+    {
+      "id": "totalClaims",
+      "label": "Total Warranty Claims",
+      "type": "number"
+    }
+  ]
+}

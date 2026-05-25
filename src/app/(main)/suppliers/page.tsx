@@ -40,50 +40,6 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { Supplier } from "@/db/types";
 import { toast } from "sonner";
 
-// High-fidelity pre-populated ERP datasets mapped to Supplier Name/Company
-const MOCK_SUPPLIER_METRICS: Record<string, {
-  volume: string;
-  outstanding: string;
-  terms: string;
-  activeContracts: number;
-  activity: Array<{ id: string; date: string; type: string; title: string; desc: string }>;
-  products: Array<{ id: string; date: string; name: string; sku: string; qty: number; price: number; warranty: "uploaded" | "missing" | "expired" }>;
-  bills: Record<string, Array<{ id: string; date: string; amount: number; invoice: boolean; receipt: boolean; note: boolean }>>;
-}> = {
-  default: {
-    volume: "$182,450",
-    outstanding: "$14,200",
-    terms: "Net 30",
-    activeContracts: 2,
-    activity: [
-      { id: "a1", date: "May 18, 2026", type: "contract", title: "Contract Agreement Signed", desc: "Annual procurement contract finalized by Legal." },
-      { id: "a2", date: "May 12, 2026", type: "payment", title: "Batch Bill Settlement", desc: "Cleared outstanding invoices for April 2026 batches." },
-      { id: "a3", date: "May 04, 2026", type: "procurement", title: "New Inventory Intake", desc: "Successfully logged 120 units of wireless parts." },
-      { id: "a4", date: "Apr 28, 2026", type: "document", title: "Warranty Certificate Uploaded", desc: "Assigned warranty cert to batch SKU-9082." }
-    ],
-    products: [
-      { id: "p1", date: "2026-05-04", name: "Premium Wireless Receivers", sku: "SKU-9082", qty: 120, price: 85, warranty: "uploaded" },
-      { id: "p2", date: "2026-04-15", name: "Hi-Fi Audio DAC Boards", sku: "SKU-4401", qty: 85, price: 120, warranty: "missing" },
-      { id: "p3", date: "2026-03-10", name: "Amplifier Housing Enclosures", sku: "SKU-3112", qty: 200, price: 45, warranty: "uploaded" },
-      { id: "p4", date: "2026-02-18", name: "Fiber Optic Terminals v2", sku: "SKU-1090", qty: 50, price: 210, warranty: "expired" },
-      { id: "p5", date: "2026-01-22", name: "Bluetooth Shielding Plates", sku: "SKU-7723", qty: 350, price: 15, warranty: "uploaded" }
-    ],
-    bills: {
-      "May 2026": [
-        { id: "b1", date: "May 14, 2026", amount: 10200, invoice: true, receipt: true, note: true },
-        { id: "b2", date: "May 05, 2026", amount: 4500, invoice: true, receipt: false, note: true }
-      ],
-      "April 2026": [
-        { id: "b3", date: "Apr 20, 2026", amount: 15400, invoice: true, receipt: true, note: true },
-        { id: "b4", date: "Apr 02, 2026", amount: 9800, invoice: true, receipt: true, note: false }
-      ],
-      "March 2026": [
-        { id: "b5", date: "Mar 15, 2026", amount: 22000, invoice: true, receipt: true, note: true }
-      ]
-    }
-  }
-};
-
 export default function SuppliersPage() {
   const { suppliers, deleteSupplier } = useData();
   const [q, setQ] = useState("");
@@ -117,9 +73,10 @@ export default function SuppliersPage() {
   const [isSubmittingERP, setIsSubmittingERP] = useState(false);
 
   // Active supplier history data
-  const [supplierActivity, setSupplierActivity] = useState<any[]>(MOCK_SUPPLIER_METRICS.default.activity);
-  const [supplierProducts, setSupplierProducts] = useState<any[]>(MOCK_SUPPLIER_METRICS.default.products);
-  const [supplierBills, setSupplierBills] = useState<Record<string, any[]>>(MOCK_SUPPLIER_METRICS.default.bills);
+  const [supplierActivity, setSupplierActivity] = useState<any[]>([]);
+  const [supplierProducts, setSupplierProducts] = useState<any[]>([]);
+  const [supplierBills, setSupplierBills] = useState<Record<string, any[]>>({});
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
 
   const filtered = suppliers.filter((s) =>
     [s.name, s.company, s.phone, s.email].some((v) => v?.toLowerCase().includes(q.toLowerCase()))
@@ -131,6 +88,79 @@ export default function SuppliersPage() {
       setSelectedSupplier(suppliers[0]);
     }
   }, [suppliers, selectedSupplier]);
+
+  // Fetch real data when supplier changes
+  useEffect(() => {
+    if (!selectedSupplier) return;
+    
+    // Set initial ERP values
+    setTaxId(selectedSupplier.taxId || "");
+    setPaymentTerms(selectedSupplier.paymentTerms || "Net 30");
+    setContractFile(selectedSupplier.contractFile || null);
+
+    const fetchData = async () => {
+      setLoadingMetrics(true);
+      try {
+        const headers = { "x-tenant-id": "cmpc620w20007ezgn2axsmt9p" };
+        
+        // Fetch products
+        const prodRes = await fetch(`/api/suppliers/${selectedSupplier.id}/products`, { headers });
+        if (prodRes.ok) {
+          const prods = await prodRes.json();
+          setSupplierProducts(prods.map((p: any) => ({
+            id: p.id,
+            date: p.stockIntake?.date || "Unknown",
+            name: p.brandName + " " + p.modelName,
+            sku: p.serial || "N/A",
+            qty: p.quantity,
+            price: Number(p.costPrice),
+            warranty: "uploaded" // default simulate
+          })));
+        }
+
+        // Fetch bills
+        const billRes = await fetch(`/api/suppliers/${selectedSupplier.id}/bills`, { headers });
+        let billsList = [];
+        if (billRes.ok) {
+          billsList = await billRes.json();
+          const grouped: Record<string, any[]> = {};
+          billsList.forEach((b: any) => {
+            if (!grouped[b.month]) grouped[b.month] = [];
+            grouped[b.month].push({
+              id: b.id,
+              date: new Date(b.date).toLocaleDateString(),
+              amount: Number(b.amount),
+              invoice: !!b.invoiceFile, receipt: !!b.receiptFile, note: !!b.noteFile, invoiceFile: b.invoiceFile, receiptFile: b.receiptFile, noteFile: b.noteFile
+            });
+          });
+          setSupplierBills(grouped);
+        }
+
+        // Generate activity dynamically
+        const activity = [];
+        if (selectedSupplier.createdAt) {
+          activity.push({
+            id: "a_created", date: new Date(selectedSupplier.createdAt).toLocaleDateString(),
+            type: "contract", title: "Supplier Registered", desc: "Added to ERP registry."
+          });
+        }
+        billsList.slice(0, 3).forEach((b: any) => {
+          activity.push({
+            id: `a_bill_${b.id}`, date: new Date(b.date).toLocaleDateString(),
+            type: "payment", title: "Supplier Bill Logged", desc: `Logged ${Number(b.amount).toLocaleString()} for ${b.month}`
+          });
+        });
+        setSupplierActivity(activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingMetrics(false);
+      }
+    };
+    fetchData();
+  }, [selectedSupplier]);
+
 
   const toggleMonth = (month: string) => {
     setExpandedMonths((prev) => ({ ...prev, [month]: !prev[month] }));
@@ -159,25 +189,54 @@ export default function SuppliersPage() {
     }, 1500);
   };
 
-  // Simulate premium multiple asset bill uploads
-  const handleBillAssetUpload = (type: "invoice" | "receipt" | "note") => {
-    const assetNames = {
-      invoice: "Invoice_PDF_5521.pdf",
-      receipt: "Payment_Receipt_992.png",
-      note: "Delivery_Note_8091.pdf"
-    };
-
-    toast.info(`Uploading ${type}...`);
-    setTimeout(() => {
-      if (type === "invoice") setBillInvoiceFile(assetNames.invoice);
-      if (type === "receipt") setBillReceiptFile(assetNames.receipt);
-      if (type === "note") setBillNoteFile(assetNames.note);
-      toast.success(`${type.toUpperCase()} asset attached!`);
-    }, 800);
+  
+  const getFileName = (jsonStr: string | null, defaultStr: string) => {
+    if (!jsonStr) return defaultStr;
+    try {
+      const obj = JSON.parse(jsonStr);
+      return obj.name || defaultStr;
+    } catch {
+      return jsonStr;
+    }
   };
 
-  const handleBillSubmit = (e: React.FormEvent) => {
+  const handleDownloadFile = (jsonStr: string | null) => {
+    if (!jsonStr) return;
+    try {
+      const obj = JSON.parse(jsonStr);
+      if (obj.data) {
+        const link = document.createElement("a");
+        link.href = obj.data;
+        link.download = obj.name || "download";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch {
+      toast.error("File data corrupted.");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string | null>>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setter(JSON.stringify({ name: file.name, data: ev.target?.result as string }));
+        toast.success(`${file.name} attached!`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Trigger hidden file inputs
+  const handleBillAssetUpload = (type: "invoice" | "receipt" | "note") => {
+    document.getElementById(`file-upload-${type}`)?.click();
+  };
+
+  const handleBillSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedSupplier) return;
     if (!billAmount || isNaN(Number(billAmount))) {
       toast.error("Please enter a valid bill amount.");
       return;
@@ -188,55 +247,82 @@ export default function SuppliersPage() {
     }
 
     setIsUploadingBill(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/suppliers/${selectedSupplier.id}/bills`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tenant-id": "cmpc620w20007ezgn2axsmt9p" },
+        body: JSON.stringify({
+          month: billMonth,
+          amount: billAmount,
+          invoiceFile: billInvoiceFile,
+          receiptFile: billReceiptFile,
+          noteFile: billNoteFile
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to save bill");
+      const newBillData = await res.json();
+
       const newBill = {
-        id: `b_dyn_${Date.now()}`,
-        date: "Today",
-        amount: Number(billAmount),
-        invoice: !!billInvoiceFile,
-        receipt: !!billReceiptFile,
-        note: !!billNoteFile,
+        id: newBillData.id,
+        date: new Date(newBillData.date).toLocaleDateString(),
+        amount: Number(newBillData.amount),
+        invoice: !!newBillData.invoiceFile, receipt: !!newBillData.receiptFile, note: !!newBillData.noteFile, invoiceFile: newBillData.invoiceFile, receiptFile: newBillData.receiptFile, noteFile: newBillData.noteFile,
       };
 
       setSupplierBills((prev) => {
         const monthBills = prev[billMonth] || [];
-        return {
-          ...prev,
-          [billMonth]: [newBill, ...monthBills],
-        };
+        return { ...prev, [billMonth]: [newBill, ...monthBills] };
       });
 
-      // Update activity timeline
       const newActivity = {
         id: `a_dyn_${Date.now()}`,
         date: "Today",
         type: "payment",
         title: "New Supplier Bill Logged",
-        desc: `A bill of $${Number(billAmount).toLocaleString()} was archived under ${billMonth}.`
+        desc: `A bill of ${Number(billAmount).toLocaleString()} was archived under ${billMonth}.`
       };
       setSupplierActivity((prev) => [newActivity, ...prev]);
 
-      // Reset Form State
       setBillAmount("");
       setBillInvoiceFile(null);
       setBillReceiptFile(null);
       setBillNoteFile(null);
-      setIsUploadingBill(false);
       toast.success("Supplier transaction bills logged successfully!");
-    }, 1800);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to log bill.");
+    } finally {
+      setIsUploadingBill(false);
+    }
   };
 
   // Handle core ERP logistics log submit
-  const handleERPSubmit = (e: React.FormEvent) => {
+  const handleERPSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedSupplier) return;
     if (!taxId) {
       toast.error("Please provide the Supplier Tax/VAT Registration ID.");
       return;
     }
 
     setIsSubmittingERP(true);
-    setTimeout(() => {
-      // Update activity log with ERP submission
+    try {
+      const res = await fetch(`/api/suppliers/${selectedSupplier.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-tenant-id": "cmpc620w20007ezgn2axsmt9p" },
+        body: JSON.stringify({
+          taxId,
+          paymentTerms,
+          contractFile
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to update ERP details");
+
+      // Update local state if needed
+      setSelectedSupplier(prev => prev ? { ...prev, taxId, paymentTerms, contractFile } : prev);
+
       const newActivity = {
         id: `a_dyn_${Date.now()}`,
         date: "Today",
@@ -245,24 +331,27 @@ export default function SuppliersPage() {
         desc: `Terms updated to ${paymentTerms}. Tax ID: ${taxId} confirmed.`
       };
       setSupplierActivity((prev) => [newActivity, ...prev]);
-
-      setIsSubmittingERP(false);
-      setContractFile(null);
-      setTaxId("");
       toast.success("ERP logistics profiles and logs saved!");
-    }, 1600);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update ERP details.");
+    } finally {
+      setIsSubmittingERP(false);
+    }
   };
 
   const handleContractUpload = () => {
-    toast.info("Uploading Procurement Contract...");
-    setTimeout(() => {
-      setContractFile("Procurement_Agreement_2026.pdf");
-      toast.success("Contract file attached!");
-    }, 1000);
+    document.getElementById('file-upload-contract')?.click();
   };
 
   return (
     <div className="flex flex-col xl:flex-row gap-6 items-stretch h-[calc(100vh-140px)] overflow-hidden no-scrollbar">
+      {/* Hidden File Inputs for real Base64 Uploads */}
+      <input type="file" id="file-upload-invoice" className="hidden" onChange={(e) => handleFileChange(e, setBillInvoiceFile)} />
+      <input type="file" id="file-upload-receipt" className="hidden" onChange={(e) => handleFileChange(e, setBillReceiptFile)} />
+      <input type="file" id="file-upload-note" className="hidden" onChange={(e) => handleFileChange(e, setBillNoteFile)} />
+      <input type="file" id="file-upload-contract" className="hidden" onChange={(e) => handleFileChange(e, setContractFile as any)} />
+
       
       {/* ==========================================
           LEFT PANE: SUPPLIER NAVIGATOR
@@ -375,15 +464,15 @@ export default function SuppliersPage() {
               <div className="grid grid-cols-3 gap-3 w-full lg:w-auto shrink-0">
                 <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100/80 dark:border-slate-800/85 p-3.5 rounded-xl text-center min-w-[100px] lg:min-w-[125px]">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80">Business Volume</p>
-                  <p className="text-lg font-bold text-foreground mt-1 tracking-tight">{MOCK_SUPPLIER_METRICS.default.volume}</p>
+                  <p className="text-lg font-bold text-foreground mt-1 tracking-tight">{selectedSupplier.businessVolume ? `${Number(selectedSupplier.businessVolume).toLocaleString()}` : "$0"}</p>
                 </div>
                 <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100/80 dark:border-slate-800/85 p-3.5 rounded-xl text-center min-w-[100px] lg:min-w-[125px]">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80 text-amber-600 dark:text-amber-400">Outstanding</p>
-                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-1 tracking-tight">{MOCK_SUPPLIER_METRICS.default.outstanding}</p>
+                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-1 tracking-tight">{selectedSupplier.outstanding ? `${Number(selectedSupplier.outstanding).toLocaleString()}` : "$0"}</p>
                 </div>
                 <div className="bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100/80 dark:border-slate-800/85 p-3.5 rounded-xl text-center min-w-[100px] lg:min-w-[125px]">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80">Contract Terms</p>
-                  <p className="text-lg font-bold text-foreground mt-1 tracking-tight">{MOCK_SUPPLIER_METRICS.default.terms}</p>
+                  <p className="text-lg font-bold text-foreground mt-1 tracking-tight">{selectedSupplier.paymentTerms || "Net 30"}</p>
                 </div>
               </div>
             </div>
@@ -583,8 +672,8 @@ export default function SuppliersPage() {
                                         {/* Hover Overlay */}
                                         {bill.invoice && (
                                           <div className="absolute inset-0 bg-primary rounded-lg text-primary-foreground flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                            <Eye className="h-3 w-3" />
-                                            <Download className="h-3 w-3" />
+                                            <Eye className="h-3 w-3 cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); handleDownloadFile(bill.invoice ? bill.invoiceFile : (bill.receipt ? bill.receiptFile : bill.noteFile)); }} />
+   <Download className="h-3 w-3 cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); handleDownloadFile(bill.invoice ? bill.invoiceFile : (bill.receipt ? bill.receiptFile : bill.noteFile)); }} />
                                           </div>
                                         )}
                                       </div>
@@ -603,8 +692,8 @@ export default function SuppliersPage() {
                                         {/* Hover Overlay */}
                                         {bill.receipt && (
                                           <div className="absolute inset-0 bg-primary rounded-lg text-primary-foreground flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                            <Eye className="h-3 w-3" />
-                                            <Download className="h-3 w-3" />
+                                            <Eye className="h-3 w-3 cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); handleDownloadFile(bill.invoice ? bill.invoiceFile : (bill.receipt ? bill.receiptFile : bill.noteFile)); }} />
+   <Download className="h-3 w-3 cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); handleDownloadFile(bill.invoice ? bill.invoiceFile : (bill.receipt ? bill.receiptFile : bill.noteFile)); }} />
                                           </div>
                                         )}
                                       </div>
@@ -623,8 +712,8 @@ export default function SuppliersPage() {
                                         {/* Hover Overlay */}
                                         {bill.note && (
                                           <div className="absolute inset-0 bg-primary rounded-lg text-primary-foreground flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                            <Eye className="h-3 w-3" />
-                                            <Download className="h-3 w-3" />
+                                            <Eye className="h-3 w-3 cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); handleDownloadFile(bill.invoice ? bill.invoiceFile : (bill.receipt ? bill.receiptFile : bill.noteFile)); }} />
+   <Download className="h-3 w-3 cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); handleDownloadFile(bill.invoice ? bill.invoiceFile : (bill.receipt ? bill.receiptFile : bill.noteFile)); }} />
                                           </div>
                                         )}
                                       </div>
@@ -689,7 +778,7 @@ export default function SuppliersPage() {
                           <FileText className={`h-4.5 w-4.5 shrink-0 ${billInvoiceFile ? "text-emerald-500" : "text-slate-400"}`} />
                           <div className="text-left min-w-0">
                             <p className="text-[11px] font-bold truncate leading-none">Invoice Document</p>
-                            <p className="text-[10px] text-muted-foreground mt-1 truncate">{billInvoiceFile || "Upload Invoice PDF"}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1 truncate">{getFileName(billInvoiceFile, "Upload Invoice PDF")}</p>
                           </div>
                         </div>
                         {billInvoiceFile ? (
@@ -712,7 +801,7 @@ export default function SuppliersPage() {
                           <CreditCardIcon className={`h-4.5 w-4.5 shrink-0 ${billReceiptFile ? "text-emerald-500" : "text-slate-400"}`} />
                           <div className="text-left min-w-0">
                             <p className="text-[11px] font-bold truncate leading-none">Payment Receipt</p>
-                            <p className="text-[10px] text-muted-foreground mt-1 truncate">{billReceiptFile || "Upload Bank Receipt"}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1 truncate">{getFileName(billReceiptFile, "Upload Bank Receipt")}</p>
                           </div>
                         </div>
                         {billReceiptFile ? (
@@ -735,7 +824,7 @@ export default function SuppliersPage() {
                           <Briefcase className={`h-4.5 w-4.5 shrink-0 ${billNoteFile ? "text-emerald-500" : "text-slate-400"}`} />
                           <div className="text-left min-w-0">
                             <p className="text-[11px] font-bold truncate leading-none">Delivery Note</p>
-                            <p className="text-[10px] text-muted-foreground mt-1 truncate">{billNoteFile || "Upload Signed Delivery Note"}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1 truncate">{getFileName(billNoteFile, "Upload Signed Delivery Note")}</p>
                           </div>
                         </div>
                         {billNoteFile ? (
@@ -811,7 +900,7 @@ export default function SuppliersPage() {
                             <FileText className="h-4.5 w-4.5 text-primary" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[11px] font-bold text-foreground truncate leading-none">MSA_Acme_2026.pdf</p>
+                            <p className="text-[11px] font-bold text-foreground truncate leading-none">{getFileName(selectedSupplier.contractFile, "No Contract Attached")}</p>
                             <p className="text-[10px] text-muted-foreground mt-1 truncate">Expires Dec 31, 2026</p>
                           </div>
                         </div>

@@ -1,14 +1,13 @@
 // ============================================================
-// Central data store (React Context) backed by IndexedDB.
+// Central data store (React Context) backed by Real Next.js APIs.
 // All pages read/write through here so the UI updates instantly
-// after any change (no manual refetching).
+// after any change. Now powered by Prisma & MySQL.
 // ============================================================
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from "react";
-import { db, uid } from "@/db/store";
 import type { Customer, Product, Warranty, WarrantyView, BackupFile, Category, Brand, Model, Supplier, Repair, Expense, Cheque, Invoice, InvoiceItem } from "@/db/types";
 import { describeWarranty } from "@/utils/warranty";
-import { io } from "socket.io-client";
+import { toast } from "sonner";
 
 interface DataCtx {
   ready: boolean;
@@ -81,6 +80,23 @@ interface DataCtx {
 
 const Ctx = createContext<DataCtx | null>(null);
 
+// Helper to interact with real APIs
+async function apiCall(endpoint: string, method: "GET" | "POST" | "PUT" | "DELETE" = "GET", body?: any) {
+  const headers: HeadersInit = { "x-tenant-id": "cmpc620w20007ezgn2axsmt9p" };
+  if (body) headers["Content-Type"] = "application/json";
+  
+  const res = await fetch(`/api/${endpoint}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `API Error: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -95,43 +111,49 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [cheques, setCheques] = useState<Cheque[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-  // tick re-renders warrantyViews so daysLeft updates over time / at midnight
   const [, setTick] = useState(0);
 
-  const syncToCloud = useCallback(async (action: "create" | "update" | "delete", entity: string, id: string, data?: any) => {
-    try {
-      await fetch("/api/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, entity, id, data }),
-      });
-    } catch (err) {
-      console.error(`Sync warning: Failed to sync ${entity} with cloud.`, err);
-    }
-  }, []);
-
-  // Load everything once on mount
+  // Load everything once on mount from Real APIs
   useEffect(() => {
     (async () => {
-      const [c, p, w, cat, br, mod, sup, rep, exp, chq, inv, invIt] = await Promise.all([
-        db.customers.all(), db.products.all(), db.warranties.all(),
-        db.categories.all(), db.brands.all(), db.models.all(),
-        db.suppliers.all(), db.repairs.all(), db.expenses.all(),
-        db.cheques.all(), db.invoices.all(), db.invoiceItems.all()
-      ]);
-      setCustomers(c);
-      setProducts(p);
-      setWarranties(w);
-      setCategories(cat);
-      setBrands(br);
-      setModels(mod);
-      setSuppliers(sup);
-      setRepairs(rep);
-      setExpenses(exp);
-      setCheques(chq);
-      setInvoices(inv);
-      setInvoiceItems(invIt);
-      setReady(true);
+      try {
+        const [c, p, w, cat, br, mod, sup, rep, exp, chq, inv] = await Promise.all([
+          apiCall("customers"), apiCall("products"), apiCall("warranties"),
+          apiCall("categories"), apiCall("brands"), apiCall("models"),
+          apiCall("suppliers"), apiCall("repairs"), apiCall("expenses"),
+          apiCall("cheques"), apiCall("invoices")
+        ]);
+        setCustomers(c || []);
+        setProducts(p || []);
+        setWarranties(w || []);
+        setCategories(cat || []);
+        setBrands(br || []);
+        setModels(mod || []);
+        setSuppliers(sup || []);
+        setRepairs(rep || []);
+        setExpenses(exp || []);
+        setCheques(chq || []);
+        
+        // Extract invoice items from invoices (if nested) or fetch them separately
+        // Usually prisma invoice include items would return them nested.
+        // Let's flatten them for the context if they are nested.
+        let items: InvoiceItem[] = [];
+        const flatInvoices = (inv || []).map((i: any) => {
+          if (i.items) {
+            items = [...items, ...i.items];
+            const { items: _, ...rest } = i;
+            return rest;
+          }
+          return i;
+        });
+
+        setInvoices(flatInvoices);
+        setInvoiceItems(items);
+        setReady(true);
+      } catch (e: any) {
+        toast.error("Failed to load data from backend: " + e.message);
+        setReady(true);
+      }
     })();
   }, []);
 
@@ -141,427 +163,177 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, []);
 
-  // Real-time synchronization via Socket.io
-  useEffect(() => {
-    if (!ready) return;
-
-    const socket = io();
-
-    socket.on("connect", () => {
-      console.log("[SOCKET] Connected to real-time sync server");
-    });
-
-    socket.on("sync-event", async (event: { action: string; entity: string; id: string; data: any }) => {
-      const { action, entity, id, data: serverData } = event;
-      console.log(`[SOCKET] Received sync-event: ${action} ${entity}`, serverData);
-
-      if (entity === "Product") {
-        if (action === "create" || action === "update") {
-          const next = { ...serverData };
-          await db.products.put(next);
-          setProducts((prev) => {
-            const idx = prev.findIndex((p) => p.id === id);
-            if (idx > -1) {
-              const updated = [...prev];
-              updated[idx] = next;
-              return updated;
-            }
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.products.remove(id);
-          setProducts((prev) => prev.filter((p) => p.id !== id));
-        }
-      } else if (entity === "Invoice") {
-        if (action === "create") {
-          const next = { ...serverData };
-          await db.invoices.put(next);
-          setInvoices((prev) => {
-            if (prev.some((i) => i.id === id)) return prev;
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.invoices.remove(id);
-          setInvoices((prev) => prev.filter((i) => i.id !== id));
-        }
-      } else if (entity === "InvoiceItem") {
-        if (action === "create") {
-          const next = { ...serverData };
-          await db.invoiceItems.put(next);
-          setInvoiceItems((prev) => {
-            if (prev.some((ii) => ii.id === id)) return prev;
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.invoiceItems.remove(id);
-          setInvoiceItems((prev) => prev.filter((ii) => ii.id !== id));
-        }
-      } else if (entity === "Customer") {
-        if (action === "create" || action === "update") {
-          const next = { ...serverData };
-          await db.customers.put(next);
-          setCustomers((prev) => {
-            const idx = prev.findIndex((c) => c.id === id);
-            if (idx > -1) {
-              const updated = [...prev];
-              updated[idx] = next;
-              return updated;
-            }
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.customers.remove(id);
-          setCustomers((prev) => prev.filter((c) => c.id !== id));
-        }
-      } else if (entity === "Cheque") {
-        if (action === "create" || action === "update") {
-          const next = { ...serverData };
-          await db.cheques.put(next);
-          setCheques((prev) => {
-            const idx = prev.findIndex((c) => c.id === id);
-            if (idx > -1) {
-              const updated = [...prev];
-              updated[idx] = next;
-              return updated;
-            }
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.cheques.remove(id);
-          setCheques((prev) => prev.filter((c) => c.id !== id));
-        }
-      } else if (entity === "Category") {
-        if (action === "create" || action === "update") {
-          const next = { ...serverData };
-          await db.categories.put(next);
-          setCategories((prev) => {
-            const idx = prev.findIndex((c) => c.id === id);
-            if (idx > -1) {
-              const updated = [...prev];
-              updated[idx] = next;
-              return updated;
-            }
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.categories.remove(id);
-          setCategories((prev) => prev.filter((c) => c.id !== id));
-        }
-      } else if (entity === "Brand") {
-        if (action === "create" || action === "update") {
-          const next = { ...serverData };
-          await db.brands.put(next);
-          setBrands((prev) => {
-            const idx = prev.findIndex((b) => b.id === id);
-            if (idx > -1) {
-              const updated = [...prev];
-              updated[idx] = next;
-              return updated;
-            }
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.brands.remove(id);
-          setBrands((prev) => prev.filter((b) => b.id !== id));
-        }
-      } else if (entity === "Model") {
-        if (action === "create" || action === "update") {
-          const next = { ...serverData };
-          await db.models.put(next);
-          setModels((prev) => {
-            const idx = prev.findIndex((m) => m.id === id);
-            if (idx > -1) {
-              const updated = [...prev];
-              updated[idx] = next;
-              return updated;
-            }
-            return [...prev, next];
-          });
-        } else if (action === "delete") {
-          await db.models.remove(id);
-          setModels((prev) => prev.filter((m) => m.id !== id));
-        }
-      }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [ready]);
-
   // ---------- Customers ----------
   const addCustomer: DataCtx["addCustomer"] = useCallback(async (data) => {
-    const c: Customer = { id: uid(), createdAt: Date.now(), ...data };
-    await db.customers.put(c);
+    const c = await apiCall("customers", "POST", data);
     setCustomers((prev) => [...prev, c]);
-    syncToCloud("create", "Customer", c.id, data);
     return c;
-  }, [syncToCloud]);
+  }, []);
   const updateCustomer: DataCtx["updateCustomer"] = useCallback(async (id, data) => {
-    const existing = await db.customers.get(id);
-    if (!existing) return;
-    const next = { ...existing, ...data };
-    await db.customers.put(next);
-    setCustomers((prev) => prev.map((c) => (c.id === id ? next : c)));
-    syncToCloud("update", "Customer", id, data);
-  }, [syncToCloud]);
+    const updated = await apiCall(`customers/${id}`, "PUT", data);
+    setCustomers((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  }, []);
   const deleteCustomer: DataCtx["deleteCustomer"] = useCallback(async (id) => {
-    await db.customers.remove(id);
-    // cascade: remove related warranties
-    const related = (await db.warranties.all()).filter((w) => w.customerId === id);
-    await Promise.all(related.map((w) => db.warranties.remove(w.id)));
+    await apiCall(`customers/${id}`, "DELETE");
     setCustomers((prev) => prev.filter((c) => c.id !== id));
     setWarranties((prev) => prev.filter((w) => w.customerId !== id));
-    syncToCloud("delete", "Customer", id);
-  }, [syncToCloud]);
+  }, []);
 
   // ---------- Products ----------
   const addProduct: DataCtx["addProduct"] = useCallback(async (data) => {
-    const p: Product = { id: uid(), createdAt: Date.now(), ...data };
-    await db.products.put(p);
+    const p = await apiCall("products", "POST", data);
     setProducts((prev) => [...prev, p]);
-    syncToCloud("create", "Product", p.id, data);
     return p;
-  }, [syncToCloud]);
+  }, []);
   const updateProduct: DataCtx["updateProduct"] = useCallback(async (id, data) => {
-    const existing = await db.products.get(id);
-    if (!existing) return;
-    const next = { ...existing, ...data };
-    await db.products.put(next);
-    setProducts((prev) => prev.map((p) => (p.id === id ? next : p)));
-    syncToCloud("update", "Product", id, data);
-  }, [syncToCloud]);
+    const updated = await apiCall(`products/${id}`, "PUT", data);
+    setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)));
+  }, []);
   const deleteProduct: DataCtx["deleteProduct"] = useCallback(async (id) => {
-    await db.products.remove(id);
-    const related = (await db.warranties.all()).filter((w) => w.productId === id);
-    await Promise.all(related.map((w) => db.warranties.remove(w.id)));
+    await apiCall(`products/${id}`, "DELETE");
     setProducts((prev) => prev.filter((p) => p.id !== id));
     setWarranties((prev) => prev.filter((w) => w.productId !== id));
-    syncToCloud("delete", "Product", id);
-  }, [syncToCloud]);
+  }, []);
 
   // ---------- Warranties ----------
   const addWarranty: DataCtx["addWarranty"] = useCallback(async (data) => {
-    const w: Warranty = { id: uid(), createdAt: Date.now(), ...data };
-    await db.warranties.put(w);
+    const w = await apiCall("warranties", "POST", data);
     setWarranties((prev) => [...prev, w]);
-    syncToCloud("create", "Warranty", w.id, data);
     return w;
-  }, [syncToCloud]);
+  }, []);
   const updateWarranty: DataCtx["updateWarranty"] = useCallback(async (id, data) => {
-    const existing = await db.warranties.get(id);
-    if (!existing) return;
-    const next = { ...existing, ...data };
-    await db.warranties.put(next);
-    setWarranties((prev) => prev.map((w) => (w.id === id ? next : w)));
-    syncToCloud("update", "Warranty", id, data);
-  }, [syncToCloud]);
+    const updated = await apiCall(`warranties/${id}`, "PUT", data);
+    setWarranties((prev) => prev.map((w) => (w.id === id ? updated : w)));
+  }, []);
   const deleteWarranty: DataCtx["deleteWarranty"] = useCallback(async (id) => {
-    await db.warranties.remove(id);
+    await apiCall(`warranties/${id}`, "DELETE");
     setWarranties((prev) => prev.filter((w) => w.id !== id));
-    syncToCloud("delete", "Warranty", id);
-  }, [syncToCloud]);
+  }, []);
 
   // ---------- Attributes ----------
   const addCategory: DataCtx["addCategory"] = useCallback(async (name) => {
-    const c: Category = { id: uid(), createdAt: Date.now(), name: name.trim() };
-    await db.categories.put(c);
+    const c = await apiCall("categories", "POST", { name: name.trim() });
     setCategories((prev) => [...prev, c]);
-    syncToCloud("create", "Category", c.id, { name: name.trim() });
     return c;
-  }, [syncToCloud]);
+  }, []);
   const updateCategory: DataCtx["updateCategory"] = useCallback(async (id, name) => {
-    const existing = await db.categories.get(id);
-    if (!existing) return;
-    const next = { ...existing, name: name.trim() };
-    await db.categories.put(next);
-    setCategories((prev) => prev.map((c) => (c.id === id ? next : c)));
-    syncToCloud("update", "Category", id, { name: name.trim() });
-  }, [syncToCloud]);
+    const updated = await apiCall(`categories/${id}`, "PUT", { name: name.trim() });
+    setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  }, []);
   const deleteCategory: DataCtx["deleteCategory"] = useCallback(async (id) => {
-    await db.categories.remove(id);
+    await apiCall(`categories/${id}`, "DELETE");
     setCategories((prev) => prev.filter((c) => c.id !== id));
-    syncToCloud("delete", "Category", id);
-  }, [syncToCloud]);
+  }, []);
 
   const addBrand: DataCtx["addBrand"] = useCallback(async (name) => {
-    const b: Brand = { id: uid(), createdAt: Date.now(), name: name.trim() };
-    await db.brands.put(b);
+    const b = await apiCall("brands", "POST", { name: name.trim() });
     setBrands((prev) => [...prev, b]);
-    syncToCloud("create", "Brand", b.id, { name: name.trim() });
     return b;
-  }, [syncToCloud]);
+  }, []);
   const updateBrand: DataCtx["updateBrand"] = useCallback(async (id, name) => {
-    const existing = await db.brands.get(id);
-    if (!existing) return;
-    const next = { ...existing, name: name.trim() };
-    await db.brands.put(next);
-    setBrands((prev) => prev.map((b) => (b.id === id ? next : b)));
-    syncToCloud("update", "Brand", id, { name: name.trim() });
-  }, [syncToCloud]);
+    const updated = await apiCall(`brands/${id}`, "PUT", { name: name.trim() });
+    setBrands((prev) => prev.map((b) => (b.id === id ? updated : b)));
+  }, []);
   const deleteBrand: DataCtx["deleteBrand"] = useCallback(async (id) => {
-    await db.brands.remove(id);
+    await apiCall(`brands/${id}`, "DELETE");
     setBrands((prev) => prev.filter((b) => b.id !== id));
-    syncToCloud("delete", "Brand", id);
-  }, [syncToCloud]);
+  }, []);
 
   const addModel: DataCtx["addModel"] = useCallback(async (name) => {
-    const m: Model = { id: uid(), createdAt: Date.now(), name: name.trim() };
-    await db.models.put(m);
+    const m = await apiCall("models", "POST", { name: name.trim() });
     setModels((prev) => [...prev, m]);
-    syncToCloud("create", "Model", m.id, { name: name.trim() });
     return m;
-  }, [syncToCloud]);
+  }, []);
   const updateModel: DataCtx["updateModel"] = useCallback(async (id, name) => {
-    const existing = await db.models.get(id);
-    if (!existing) return;
-    const next = { ...existing, name: name.trim() };
-    await db.models.put(next);
-    setModels((prev) => prev.map((m) => (m.id === id ? next : m)));
-    syncToCloud("update", "Model", id, { name: name.trim() });
-  }, [syncToCloud]);
+    const updated = await apiCall(`models/${id}`, "PUT", { name: name.trim() });
+    setModels((prev) => prev.map((m) => (m.id === id ? updated : m)));
+  }, []);
   const deleteModel: DataCtx["deleteModel"] = useCallback(async (id) => {
-    await db.models.remove(id);
+    await apiCall(`models/${id}`, "DELETE");
     setModels((prev) => prev.filter((m) => m.id !== id));
-    syncToCloud("delete", "Model", id);
-  }, [syncToCloud]);
+  }, []);
 
   // ---------- Suppliers ----------
   const addSupplier: DataCtx["addSupplier"] = useCallback(async (data) => {
-    const s: Supplier = { id: uid(), createdAt: Date.now(), ...data };
-    await db.suppliers.put(s);
+    const s = await apiCall("suppliers", "POST", data);
     setSuppliers((prev) => [...prev, s]);
-    syncToCloud("create", "Supplier", s.id, data);
     return s;
-  }, [syncToCloud]);
+  }, []);
   const updateSupplier: DataCtx["updateSupplier"] = useCallback(async (id, data) => {
-    const existing = await db.suppliers.get(id);
-    if (!existing) return;
-    const next = { ...existing, ...data };
-    await db.suppliers.put(next);
-    setSuppliers((prev) => prev.map((s) => (s.id === id ? next : s)));
-    syncToCloud("update", "Supplier", id, data);
-  }, [syncToCloud]);
+    const updated = await apiCall(`suppliers/${id}`, "PUT", data);
+    setSuppliers((prev) => prev.map((s) => (s.id === id ? updated : s)));
+  }, []);
   const deleteSupplier: DataCtx["deleteSupplier"] = useCallback(async (id) => {
-    await db.suppliers.remove(id);
+    await apiCall(`suppliers/${id}`, "DELETE");
     setSuppliers((prev) => prev.filter((s) => s.id !== id));
-    syncToCloud("delete", "Supplier", id);
-  }, [syncToCloud]);
+  }, []);
 
   // ---------- Repairs ----------
   const addRepair: DataCtx["addRepair"] = useCallback(async (data) => {
-    const r: Repair = { id: uid(), createdAt: Date.now(), ...data };
-    await db.repairs.put(r);
+    const r = await apiCall("repairs", "POST", data);
     setRepairs((prev) => [...prev, r]);
-    syncToCloud("create", "Repair", r.id, data);
     return r;
-  }, [syncToCloud]);
+  }, []);
   const updateRepair: DataCtx["updateRepair"] = useCallback(async (id, data) => {
-    const existing = await db.repairs.get(id);
-    if (!existing) return;
-    const next = { ...existing, ...data };
-    await db.repairs.put(next);
-    setRepairs((prev) => prev.map((r) => (r.id === id ? next : r)));
-    syncToCloud("update", "Repair", id, data);
-  }, [syncToCloud]);
+    const updated = await apiCall(`repairs/${id}`, "PUT", data);
+    setRepairs((prev) => prev.map((r) => (r.id === id ? updated : r)));
+  }, []);
   const deleteRepair: DataCtx["deleteRepair"] = useCallback(async (id) => {
-    await db.repairs.remove(id);
+    await apiCall(`repairs/${id}`, "DELETE");
     setRepairs((prev) => prev.filter((r) => r.id !== id));
-    syncToCloud("delete", "Repair", id);
-  }, [syncToCloud]);
+  }, []);
 
   // ---------- Expenses ----------
   const addExpense: DataCtx["addExpense"] = useCallback(async (data) => {
-    const e: Expense = { id: uid(), createdAt: Date.now(), ...data };
-    await db.expenses.put(e);
+    const e = await apiCall("expenses", "POST", data);
     setExpenses((prev) => [...prev, e]);
-    syncToCloud("create", "Expense", e.id, data);
     return e;
-  }, [syncToCloud]);
+  }, []);
   const updateExpense: DataCtx["updateExpense"] = useCallback(async (id, data) => {
-    const existing = await db.expenses.get(id);
-    if (!existing) return;
-    const next = { ...existing, ...data };
-    await db.expenses.put(next);
-    setExpenses((prev) => prev.map((e) => (e.id === id ? next : e)));
-    syncToCloud("update", "Expense", id, data);
-  }, [syncToCloud]);
+    const updated = await apiCall(`expenses/${id}`, "PUT", data);
+    setExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)));
+  }, []);
   const deleteExpense: DataCtx["deleteExpense"] = useCallback(async (id) => {
-    await db.expenses.remove(id);
+    await apiCall(`expenses/${id}`, "DELETE");
     setExpenses((prev) => prev.filter((e) => e.id !== id));
-    syncToCloud("delete", "Expense", id);
-  }, [syncToCloud]);
+  }, []);
 
   const addCheque: DataCtx["addCheque"] = useCallback(async (data) => {
-    const c = { id: uid(), ...data, createdAt: Date.now() };
-    await db.cheques.put(c);
+    const c = await apiCall("cheques", "POST", data);
     setCheques((prev) => [...prev, c]);
-    syncToCloud("create", "Cheque", c.id, data);
     return c;
-  }, [syncToCloud]);
+  }, []);
   const updateCheque: DataCtx["updateCheque"] = useCallback(async (id, data) => {
-    const existing = await db.cheques.get(id);
-    if (!existing) return;
-    const next = { ...existing, ...data } as Cheque;
-    await db.cheques.put(next);
-    setCheques((prev) => prev.map((c) => (c.id === id ? next : c)));
-    syncToCloud("update", "Cheque", id, data);
-  }, [syncToCloud]);
+    const updated = await apiCall(`cheques/${id}`, "PUT", data);
+    setCheques((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  }, []);
   const deleteCheque: DataCtx["deleteCheque"] = useCallback(async (id) => {
-    await db.cheques.remove(id);
+    await apiCall(`cheques/${id}`, "DELETE");
     setCheques((prev) => prev.filter((c) => c.id !== id));
-    syncToCloud("delete", "Cheque", id);
-  }, [syncToCloud]);
+  }, []);
 
   const addInvoice: DataCtx["addInvoice"] = useCallback(async (data, items) => {
-    const invId = uid();
-    const inv = { id: invId, ...data, createdAt: Date.now() };
-    await db.invoices.put(inv);
-    setInvoices((prev) => [...prev, inv]);
-    syncToCloud("create", "Invoice", inv.id, data);
+    const inv = await apiCall("invoices", "POST", { ...data, items });
+    
+    // The backend should return the created invoice with items
+    const { items: savedItems, ...invData } = inv;
+    setInvoices((prev) => [...prev, invData]);
+    if (savedItems) setInvoiceItems((prev) => [...prev, ...savedItems]);
 
-    const savedItems: InvoiceItem[] = [];
-    for (const item of items) {
-      const itemWithId = { id: uid(), invoiceId: invId, ...item };
-      await db.invoiceItems.put(itemWithId);
-      savedItems.push(itemWithId);
-      syncToCloud("create", "InvoiceItem", itemWithId.id, item);
+    // Refresh products to update quantities correctly from the backend
+    try {
+      const p = await apiCall("products");
+      setProducts(p || []);
+    } catch(e){}
 
-      // Decrement product quantity locally & sync to cloud using unique identifier (Brand + Model + SKU/Serial Number)
-      const selectedProd = await db.products.get(item.productId);
-      if (selectedProd) {
-        const allProds = await db.products.all();
-        const prod = allProds.find((p) =>
-          p.brandId === selectedProd.brandId &&
-          p.modelId === selectedProd.modelId &&
-          p.sku === selectedProd.sku &&
-          p.serial === selectedProd.serial
-        ) || selectedProd;
-
-        const nextQty = Math.max(0, prod.quantity - item.quantity);
-        const updated = { ...prod, quantity: nextQty };
-        await db.products.put(updated);
-        setProducts((prev) => prev.map((p) => p.id === prod.id ? updated : p));
-        syncToCloud("update", "Product", prod.id, { quantity: nextQty });
-      }
-    }
-    setInvoiceItems((prev) => [...prev, ...savedItems]);
-
-    return { ...inv, items: savedItems };
-  }, [syncToCloud]);
+    return inv;
+  }, []);
 
   const deleteInvoice: DataCtx["deleteInvoice"] = useCallback(async (id) => {
-    await db.invoices.remove(id);
+    await apiCall(`invoices/${id}`, "DELETE");
     setInvoices((prev) => prev.filter((i) => i.id !== id));
-    syncToCloud("delete", "Invoice", id);
-
-    const related = invoiceItems.filter((ii) => ii.invoiceId === id);
-    for (const item of related) {
-      await db.invoiceItems.remove(item.id);
-      syncToCloud("delete", "InvoiceItem", item.id);
-    }
     setInvoiceItems((prev) => prev.filter((ii) => ii.invoiceId !== id));
-  }, [invoiceItems, syncToCloud]);
+  }, []);
 
   // ---------- Joined view ----------
   const warrantyViews = useMemo<WarrantyView[]>(() => {
@@ -593,24 +365,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }), [customers, products, warranties]);
 
   const importBackup = useCallback<DataCtx["importBackup"]>(async (file, mode) => {
-    if (!file || file.app !== "warranty-manager") throw new Error("Invalid backup file");
-    if (mode === "replace") {
-      await Promise.all([db.customers.clear(), db.products.clear(), db.warranties.clear()]);
-    }
-    await Promise.all([
-      ...file.customers.map((c) => db.customers.put(c)),
-      ...file.products.map((p) => db.products.put(p)),
-      ...file.warranties.map((w) => db.warranties.put(w)),
-    ]);
-    const [c, p, w] = await Promise.all([db.customers.all(), db.products.all(), db.warranties.all()]);
-    setCustomers(c);
-    setProducts(p);
-    setWarranties(w);
+    toast.error("Import backup is disabled in online-first mode.");
   }, []);
 
   const resetAll = useCallback(async () => {
-    await Promise.all([db.customers.clear(), db.products.clear(), db.warranties.clear()]);
-    setCustomers([]); setProducts([]); setWarranties([]);
+    toast.error("Reset all is disabled in online-first mode.");
   }, []);
 
   const value: DataCtx = {

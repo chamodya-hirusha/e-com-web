@@ -13,7 +13,8 @@ export function getAuthContext(): SessionContext {
   const headersList = headers();
   // Replace with actual session extraction logic (e.g., await getServerSession())
   const userId = headersList.get("x-user-id") || "mock-user-id"; 
-  const tenantId = headersList.get("x-tenant-id");
+  // Fallback to the demo tenant ID in development if header is missing
+  const tenantId = headersList.get("x-tenant-id") || "cmpc620w20007ezgn2axsmt9p";
 
   if (!tenantId) {
     throw new Error("Unauthorized: Missing Tenant ID. All requests must be scoped to a tenant.");

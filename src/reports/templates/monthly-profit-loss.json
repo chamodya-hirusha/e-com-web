@@ -1,0 +1,76 @@
+{
+  "id": "monthly-profit-loss",
+  "title": "Monthly Profit/Loss",
+  "description": "Detailed profit and loss statement.",
+  "category": "Finance",
+  "icon": "TrendingUp",
+  "filters": [
+    {
+      "id": "dateRange",
+      "type": "date-range",
+      "label": "Date Range"
+    }
+  ],
+  "columns": [
+    {
+      "id": "month",
+      "label": "Month",
+      "type": "string"
+    },
+    {
+      "id": "revenue",
+      "label": "Revenue",
+      "type": "currency"
+    },
+    {
+      "id": "expenses",
+      "label": "Expenses",
+      "type": "currency"
+    },
+    {
+      "id": "netProfit",
+      "label": "Net Profit",
+      "type": "currency"
+    }
+  ],
+  "chart": {
+    "type": "line",
+    "xAxis": "month",
+    "yAxis": [
+      "revenue",
+      "expenses",
+      "netProfit"
+    ]
+  },
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=monthly-profit-loss",
+  "permissions": [
+    "admin",
+    "manager"
+  ],
+  "defaultSort": {
+    "column": "month",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalRevenue",
+      "label": "Total Revenue",
+      "type": "currency"
+    },
+    {
+      "id": "totalExpenses",
+      "label": "Total Expenses",
+      "type": "currency"
+    },
+    {
+      "id": "overallProfit",
+      "label": "Overall Profit",
+      "type": "currency"
+    }
+  ]
+}

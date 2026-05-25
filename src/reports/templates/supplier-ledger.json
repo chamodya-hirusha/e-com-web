@@ -1,0 +1,58 @@
+{
+  "id": "supplier-ledger",
+  "title": "Supplier Outstanding Ledger",
+  "description": "Summary of outstanding balances due to suppliers.",
+  "category": "Finance",
+  "icon": "CreditCard",
+  "filters": [],
+  "columns": [
+    {
+      "id": "supplierName",
+      "label": "Supplier",
+      "type": "string"
+    },
+    {
+      "id": "totalPurchases",
+      "label": "Total Purchases",
+      "type": "currency"
+    },
+    {
+      "id": "amountPaid",
+      "label": "Amount Paid",
+      "type": "currency"
+    },
+    {
+      "id": "outstandingBalance",
+      "label": "Outstanding Balance",
+      "type": "currency"
+    }
+  ],
+  "chart": {
+    "type": "bar",
+    "xAxis": "supplierName",
+    "yAxis": [
+      "outstandingBalance"
+    ]
+  },
+  "exportOptions": [
+    "pdf",
+    "excel",
+    "csv"
+  ],
+  "apiEndpoint": "/api/reports/engine?report=supplier-ledger",
+  "permissions": [
+    "admin",
+    "manager"
+  ],
+  "defaultSort": {
+    "column": "outstandingBalance",
+    "direction": "desc"
+  },
+  "summaryCards": [
+    {
+      "id": "totalOutstanding",
+      "label": "Total Outstanding",
+      "type": "currency"
+    }
+  ]
+}
