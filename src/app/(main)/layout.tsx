@@ -49,7 +49,7 @@ export default function MainLayout({
           </div>
         </header>
 
-        <main className="flex-1 px-4 sm:px-8 py-6 pb-24 md:pb-8 max-w-7xl w-full mx-auto overflow-y-auto no-scrollbar">
+        <main className="flex-1 px-4 sm:px-8 py-6 pb-24 md:pb-8 max-w-none w-full mx-auto overflow-y-auto no-scrollbar">
           {children}
         </main>
       </div>

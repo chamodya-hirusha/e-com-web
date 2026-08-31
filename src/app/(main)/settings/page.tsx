@@ -81,7 +81,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-12 max-w-4xl mx-auto pb-16">
+    <div className="space-y-12 w-full pb-16">
       
       {/* Header section */}
       <div className="border-b border-neutral-100 dark:border-neutral-800/80 pb-6">

@@ -42,6 +42,12 @@ export default function RepairDetailPage({ params }: { params: { id: string } })
   const [lightboxScale, setLightboxScale] = useState(1);
 
   const repair = repairs.find((r) => r.id === id);
+  const statusName = useMemo(() => {
+    if (!repair) return "Pending";
+    return typeof repair.status === "object" && repair.status 
+      ? (repair.status as any).name 
+      : (repair.status || "Pending");
+  }, [repair]);
 
   const customer = useMemo(() => {
     if (!repair) return null;
@@ -240,11 +246,11 @@ export default function RepairDetailPage({ params }: { params: { id: string } })
           </div>
           <span className={cn(
             "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shrink-0 print:border print:text-black",
-            repair.status.toLowerCase() === "pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-500/25" :
-            repair.status.toLowerCase() === "completed" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-500/25" :
+            statusName.toLowerCase() === "pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-500/25" :
+            statusName.toLowerCase() === "completed" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-500/25" :
             "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-500/25"
           )}>
-            {repair.status}
+            {statusName}
           </span>
         </div>
 

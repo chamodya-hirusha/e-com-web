@@ -47,12 +47,16 @@ export function RepairDialog({ open, onOpenChange, initial }: Props) {
 
   useEffect(() => {
     if (open) {
+      const initialStatus = typeof initial?.status === "object" && initial?.status 
+        ? (initial?.status as any).name 
+        : initial?.status;
+
       reset({
         customerId: initial?.customerId ?? (customers.length > 0 ? customers[0].id : ""),
         deviceId: initial?.deviceId ?? "",
         deviceName: initial?.deviceName ?? "",
         problem: initial?.problem ?? "",
-        status: initial?.status ?? "pending",
+        status: (initialStatus || "pending").toLowerCase(),
         cost: initial?.cost ?? "",
         techNotes: initial?.techNotes ?? "",
         receivedDate: initial?.receivedDate ?? new Date().toISOString().slice(0, 10),

@@ -18,8 +18,20 @@ export async function POST(req: Request) {
   try {
     const { tenantId } = getAuthContext();
     const body = await req.json();
+    const { customerId, productId, purchaseDate, months } = body;
+
+    const pDate = new Date(purchaseDate);
+    const expDate = new Date(pDate);
+    expDate.setMonth(expDate.getMonth() + Number(months || 0));
+
     const data = await prisma.warranty.create({
-      data: { ...body, tenantId }
+      data: {
+        productId,
+        customerId,
+        purchaseDate: pDate,
+        expiryDate: expDate,
+        tenantId
+      }
     });
     return NextResponse.json(data);
   } catch (error: any) {

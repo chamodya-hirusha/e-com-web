@@ -50,3 +50,8 @@ coverage/
 *.sln
 *.sw?
 
+# Scripts
+scripts/
+
+# Prisma seed script
+prisma/seed.cjs

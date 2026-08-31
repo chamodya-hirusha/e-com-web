@@ -11,7 +11,7 @@ import { RepairDialog } from "@/components/RepairDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { Repair } from "@/db/types";
 
-function RepairStatusBadge({ status }: { status: string }) {
+function RepairStatusBadge({ status }: { status: any }) {
   const colors = {
     pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500",
     soon: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-500",
@@ -22,11 +22,12 @@ function RepairStatusBadge({ status }: { status: string }) {
     delivered: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
   };
   
-  const cls = colors[status.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800";
+  const statusName = (typeof status === "object" && status ? (status as any).name : status) || "Pending";
+  const cls = colors[statusName.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800";
   
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {statusName.charAt(0).toUpperCase() + statusName.slice(1)}
     </span>
   );
 }
@@ -39,9 +40,10 @@ export default function RepairsPage() {
   const [editing, setEditing] = useState<Repair | null>(null);
   const [confirming, setConfirming] = useState<Repair | null>(null);
 
-  const filtered = repairs.filter((r) =>
-    [r.deviceName, r.problem, r.status].some((v) => v?.toLowerCase().includes(q.toLowerCase())),
-  );
+  const filtered = repairs.filter((r) => {
+    const statusName = typeof r.status === "object" && r.status ? (r.status as any).name : (r.status || "");
+    return [r.deviceName, r.problem, statusName].some((v) => v?.toLowerCase().includes(q.toLowerCase()));
+  });
 
   return (
     <div className="space-y-4">

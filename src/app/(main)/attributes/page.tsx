@@ -65,7 +65,7 @@ export default function AttributesPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
         <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
           <button

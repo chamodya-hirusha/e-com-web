@@ -49,7 +49,12 @@ export function statusLabel(s: WarrantyStatus): string {
 }
 
 export function describeWarranty(w: Warranty) {
-  const expiry = calcExpiryDate(w.purchaseDate, w.months);
+  let expiry: Date;
+  if (w.expiryDate) {
+    expiry = typeof w.expiryDate === "string" ? parseISO(w.expiryDate) : w.expiryDate;
+  } else {
+    expiry = calcExpiryDate(w.purchaseDate, w.months || 0);
+  }
   const daysLeft = differenceInCalendarDays(expiry, new Date());
   return { expiry, daysLeft, status: calcStatus(daysLeft) };
 }

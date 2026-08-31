@@ -57,7 +57,8 @@ export interface Warranty {
   /** ISO date string e.g. "2025-04-20" */
   purchaseDate: string;
   /** Warranty length in MONTHS */
-  months: number;
+  months?: number;
+  expiryDate?: string;
   notes?: string;
   createdAt: number;
 }
